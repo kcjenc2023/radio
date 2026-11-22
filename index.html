@@ -128,7 +128,7 @@ summary{color:#9aa8c0;font-size:14px}
   <label>호출명 (이름 또는 위치)</label>
   <input id="fName" maxlength="12" placeholder="예: 조사1, 현장A">
   <label>그룹코드 (팀 전용 암호)</label>
-  <input id="fGroup" maxlength="24" placeholder="예: KCJ2026">
+  <input id="fGroup" maxlength="24" placeholder="6자 이상, 예: 영문+숫자 섞어서">
   <div class="hint">같은 그룹코드끼리만 들립니다. 영문·숫자로 정하고 외부에 알리지 마세요.</div>
   <label>채널</label>
   <select id="fCh"></select>
@@ -519,6 +519,7 @@ $('#closeSet').onclick=()=>{if(!S.name||!cleanGroup(S.group)){toast('호출명�
 $('#saveBtn').onclick=async()=>{
  const name=$('#fName').value.trim(),group=cleanGroup($('#fGroup').value),ch=+$('#fCh').value,cfgT=$('#fCfg').value;
  if(!name||!group){toast('호출명과 그룹코드를 입력하세요');return;}
+ if(group.length<6){toast('그룹코드는 6자 이상으로 정하세요');return;}
  const cfg=parseCfg(cfgT); if(cfg===false){toast('Firebase 설정값을 확인하세요 (apiKey, databaseURL 필요)');return;}
  const changed=!net||group!==cleanGroup(S.group)||JSON.stringify(cfg)!==JSON.stringify(S.cfg)||name!==S.name;
  Object.assign(S,{name,group,ch,cfg});ME.n=name;LS.set('name',name);LS.set('group',group);LS.set('ch',ch);LS.set('cfg',cfg);
