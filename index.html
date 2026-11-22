@@ -6,6 +6,9 @@
 <meta name="theme-color" content="#0b1322">
 <meta name="mobile-web-app-capable" content="yes">
 <title>KCJ 현장무전기</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;background:#05080f;color:#e8edf5;font-family:-apple-system,"Malgun Gothic","Apple SD Gothic Neo",sans-serif;overflow:hidden;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
@@ -526,6 +529,7 @@ $('#saveBtn').onclick=async()=>{
 $('#powerBtn').onclick=powerOn;
 
 /* ---------- 시작 ---------- */
+if('serviceWorker' in navigator) addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 ui.ch();
 if(!S.name||!cleanGroup(S.group)){fillSet();openSheet('#setSheet');}
 else $('#power').classList.add('show');
