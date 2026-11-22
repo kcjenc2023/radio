@@ -1,0 +1,59 @@
+name: KCJ RADIO APK 빌드
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'apk-src.zip'
+      - '.github/workflows/apk.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: android-actions/setup-android@v3
+
+      - name: 안드로이드 프로젝트 준비
+        env:
+          VERSION_CODE: ${{ github.run_number }}
+        run: |
+          mkdir build && cd build
+          unzip -q ../apk-src.zip
+          npm install --no-audit --no-fund
+          npx cap add android
+          python3 patch.py
+
+      - name: APK 빌드
+        run: |
+          cd build/android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+          cp app/build/outputs/apk/debug/app-debug.apk ../../KCJ-RADIO.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KCJ-RADIO-apk
+          path: KCJ-RADIO.apk
+
+      - name: 다운로드 페이지(Releases)에 올리기
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete apk-latest -y --cleanup-tag || true
+          gh release create apk-latest KCJ-RADIO.apk \
+            --title "KCJ RADIO 설치 파일 (빌드 ${{ github.run_number }})" \
+            --notes "폰에서 KCJ-RADIO.apk를 눌러 내려받아 설치하세요."
