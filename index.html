@@ -47,8 +47,8 @@ background:linear-gradient(180deg,#ffbf47,#f5a623 60%,#e08f12);box-shadow:inset 
 #meter i{flex:1;background:#2a1800;opacity:.15;border-radius:1px}
 #meter i.on{opacity:.9}
 .grill{flex:1 1 auto;min-height:40px;border-radius:12px;background:radial-gradient(circle,#060a12 1.6px,transparent 2px) 0 0/10px 10px,#141f33;box-shadow:inset 0 2px 6px #000}
-.keys{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;flex:0 0 auto}
-.keys button{height:46px;border:0;border-radius:10px;font-weight:800;font-size:13px;color:#cfd8e6;background:linear-gradient(#2a3a57,#1a2740);box-shadow:0 3px 0 #070b14,inset 0 1px 0 #3d5278}
+.keys{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;flex:0 0 auto}
+.keys button{height:42px;border:0;border-radius:10px;font-weight:800;font-size:13px;color:#cfd8e6;background:linear-gradient(#2a3a57,#1a2740);box-shadow:0 3px 0 #070b14,inset 0 1px 0 #3d5278}
 .keys button:active{transform:translateY(2px);box-shadow:0 1px 0 #070b14}
 #ptt{flex:0 0 auto;height:min(30vh,230px);border:0;border-radius:22px;touch-action:none;color:#0b1322;font-weight:900;font-size:26px;letter-spacing:3px;
 background:repeating-linear-gradient(0deg,rgba(0,0,0,.08) 0 3px,transparent 3px 9px),linear-gradient(#ffbf47,#e8940f);box-shadow:0 8px 0 #7a4d06,0 10px 18px #000,inset 0 2px 0 #ffe0a0;transition:transform .05s}
@@ -80,6 +80,23 @@ summary{color:#9aa8c0;font-size:14px}
 #power.show{display:flex}
 #power button{width:150px;height:150px;border-radius:50%;border:0;font-size:52px;color:#f5a623;background:radial-gradient(circle at 35% 30%,#2c3c5a,#0b1322);box-shadow:0 0 0 6px #1d2a40,0 10px 30px #000}
 #power p{position:absolute;bottom:22%;width:100%;text-align:center;color:#9aa8c0;font-size:14px}
+.keys button.emg{color:#fff;background:linear-gradient(#d4352b,#a3231b);box-shadow:0 3px 0 #4d0f0b,inset 0 1px 0 #ff6b60}
+.btn.danger{background:#d4352b;color:#fff;position:relative;overflow:hidden}
+.btn.danger i{position:absolute;left:0;top:0;bottom:0;width:0;background:rgba(255,255,255,.3)}
+.alist{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
+.alist label{margin:0;display:flex;align-items:center;gap:8px;padding:10px;border:1px solid #2c3c5a;border-radius:10px;color:#e8edf5;font-size:14px}
+.alist label.on{border-color:#f5a623;background:#1d2a40}
+.alist input{width:auto;margin:0}
+.alist button{margin-left:auto;border:0;border-radius:6px;background:#24344f;color:#fff;padding:4px 8px}
+#emgStatus{margin-top:12px;font-size:14px;color:#ffbf47;line-height:1.6}
+#alarm{position:fixed;inset:0;z-index:40;display:none;align-items:center;justify-content:center;background:#a3231b;animation:aflash .6s infinite}
+#alarm.show{display:flex}
+@keyframes aflash{50%{background:#3a0806}}
+#alarm .abox{text-align:center;padding:24px;width:min(420px,92%)}
+#alarm .ah{font-size:34px;font-weight:900;letter-spacing:4px;color:#fff}
+#alarm .af{margin-top:14px;font-size:22px;font-weight:800;color:#ffe0a0}
+#alarm .am{margin-top:10px;font-size:28px;font-weight:900;color:#fff;word-break:keep-all}
+#alarm button{margin-top:30px;width:100%;padding:22px;border:0;border-radius:16px;font-size:22px;font-weight:900;background:#fff;color:#a3231b}
 #toast{position:fixed;left:50%;top:18px;transform:translateX(-50%);background:#f5a623;color:#0b1322;font-weight:800;padding:10px 18px;border-radius:20px;z-index:30;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
 #toast.show{opacity:1}
 .mode{font-size:11px;padding:2px 6px;border-radius:4px;background:#2a1800;color:#ffbf47}
@@ -112,6 +129,7 @@ summary{color:#9aa8c0;font-size:14px}
   <div class="keys">
     <button id="chDn">CH▼</button>
     <button id="chUp">CH▲</button>
+    <button id="bEmg" class="emg">긴급</button>
     <button id="bLog">기록</button>
     <button id="bInv">초대</button>
     <button id="bSet">설정</button>
@@ -158,6 +176,26 @@ summary{color:#9aa8c0;font-size:14px}
   <button class="btn sec" data-close>닫기</button>
 </div></div>
 
+<div class="sheet" id="emgSheet"><div class="panel">
+  <h2>긴급 호출</h2>
+  <div class="hint">그룹 전체(모든 채널)에 경보음과 메시지를 보냅니다. 받은 사람이 '확인'을 누르면 아래에 표시됩니다.</div>
+  <label>경보음</label>
+  <div class="alist" id="aList"></div>
+  <label>메시지</label>
+  <select id="emgPreset"><option>즉시 대피</option><option>작업 중지</option><option>본부로 집합</option><option>본부 연락 바람</option><option>직접 입력</option></select>
+  <input id="emgMsg" maxlength="30" placeholder="직접 입력 (30자)" style="display:none;margin-top:8px">
+  <button class="btn danger" id="emgSend"><i></i><span>길게 눌러 발송 (1초)</span></button>
+  <div id="emgStatus"></div>
+  <button class="btn sec" data-close>닫기</button>
+</div></div>
+
+<div id="alarm"><div class="abox">
+  <div class="ah">긴급 호출</div>
+  <div class="af" id="aFrom"></div>
+  <div class="am" id="aMsg"></div>
+  <button id="aAck">확인 · 경보 끄기</button>
+</div></div>
+
 <div id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
@@ -183,7 +221,7 @@ const LS = {get(k,d){try{const v=localStorage.getItem('kcjr_'+k);return v===null
 const uid = Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);   // 실행할 때마다 새 ID (탭별 구분)
 const S = {name:LS.get('name',''), group:LS.get('group',''), ch:LS.get('ch',1), cfg:LS.get('cfg',null)};
 const ME = {u:uid, n:S.name};
-let net=null, LOCK=null, CONNECTED=false, POWER=false;
+let net=null, LOCK=null, CONNECTED=false, POWER=false, USERS=0;
 
 /* ---------- URL 초대 파라미터 ---------- */
 (function(){const p=new URLSearchParams(location.search);
@@ -281,7 +319,7 @@ function txStart(){
  if(A.codec==='opus'){TX.enc=new AudioEncoder({output:c=>{const u=new Uint8Array(c.byteLength);c.copyTo(u);addPacket(u);},error:e=>console.warn('enc',e)});TX.enc.configure(ENC_CFG);}
  A.node.port.postMessage(true); ui.tx(); vib(25);
  TX.grantP=net.acquire().then(ok=>{
-  if(ok){TX.granted=true;sfx.permit();TX.pending.forEach(m=>net.send(m));TX.pending=[];}
+  if(ok){TX.granted=true;sfx.permit();TX.pending.forEach(m=>net.send(m));TX.pending=[];watchTxAcks(S.ch,TX.id);}
   else{sfx.busy();vib([60,40,60]);toast('채널 사용중');if(!TX.stopping)txAbort();}
   return ok;});
  TX.tot=setTimeout(()=>{toast('송신 '+TOT_SEC+'초 제한');txStop();},TOT_SEC*1000);
@@ -295,8 +333,18 @@ async function txStop(){
  if(TX.enc){try{await TX.enc.flush();}catch(e){} try{TX.enc.close();}catch(e){} TX.enc=null;}
  const ok=await TX.grantP;
  if(ok){flushPk(true);net.release();sfx.click();
-  logAdd({me:true,n:ME.n,ch:S.ch,t:TX.t0,dur:(Date.now()-TX.t0)/1000,chunks:TX.rec.slice()});}
+  const e={me:true,n:ME.n,ch:S.ch,t:TX.t0,dur:(Date.now()-TX.t0)/1000,chunks:TX.rec.slice(),acks:ACKW.names};
+  ACKW.entry=e; logAdd(e);}
  TX.on=false;TX.stopping=false;ui.idle();
+ if(ok) ui.ackShow();
+}
+/* 수신 확인: 내 송신을 들은 사람 표시 */
+const ACKW={off:null,names:[],entry:null,ch:1,timer:0,showUntil:0};
+function watchTxAcks(ch,id){
+ if(ACKW.off){ACKW.off();ACKW.off=null;} clearTimeout(ACKW.timer);
+ ACKW.names=[];ACKW.ch=ch;ACKW.entry=null;
+ ACKW.off=net.watchAcks(ch,id,v=>{ACKW.names=Object.values(v);if(ACKW.entry)ACKW.entry.acks=ACKW.names;if(Date.now()<ACKW.showUntil)ui.ackShow(true);});
+ ACKW.timer=setTimeout(()=>{if(ACKW.off){ACKW.off();ACKW.off=null;}},90000);
 }
 
 /* ---------- 수신 ---------- */
@@ -329,19 +377,23 @@ function play(r,f,sr){
 }
 async function finishStream(r){if(r.dec){try{await r.dec.flush();}catch(e){}try{r.dec.close();}catch(e){}r.dec=null;}}
 
-function onChunk(m){
+function onChunk(m,ch){
  if(!POWER||m.u===ME.u)return;
+ if(ch===undefined)ch=S.ch;
  if(TX.on){return;}                                     // 송신 중엔 수신 무시 (반이중)
- if(!RX.cur||RX.cur.x!==m.x){ if(RX.cur)rxEnd(); rxBegin(m); }
+ if(!RX.cur||RX.cur.x!==m.x){ if(RX.cur)rxEnd(); rxBegin(m,ch); }
  const c=RX.cur; c.lastAt=Date.now(); c.chunks.push(m);
  if(m.s<=c.seq)return; c.seq=m.s;
  feed(c.st,m);
  clearTimeout(c.idle);
  if(m.e) rxEnd(); else c.idle=setTimeout(rxEnd,2500);
 }
-function rxBegin(m){
- RX.cur={x:m.x,n:m.n,u:m.u,seq:-1,chunks:[],t0:Date.now(),lastAt:Date.now(),ending:false,st:makeStream(m.c)};
- sfx.open(); vib(35); ui.rx(m.n);
+function rxBegin(m,ch){
+ const all=(ch===1&&S.ch!==1);
+ RX.cur={x:m.x,n:m.n,u:m.u,ch,all,seq:-1,chunks:[],t0:Date.now(),lastAt:Date.now(),ending:false,st:makeStream(m.c)};
+ sfx.open(); vib(all?[60,40,60]:35); ui.rx((all?'[전체] ':'')+m.n);
+ try{net.ack(ch,m.x);}catch(e){}                 // 수신 확인 자동 회신
+ nativeNotify('◀ '+(all?'[전체] ':'')+m.n);
 }
 async function rxEnd(){
  const c=RX.cur; if(!c||c.ending)return; c.ending=true; clearTimeout(c.idle);
@@ -349,7 +401,7 @@ async function rxEnd(){
  const now=A.ctx.currentTime, t=Math.max(c.st.next,now);
  sfx.roger(t); sfx.tail(t+.19);
  const dur=c.st.started?Math.max(0,c.st.next-c.st.first):0;
- logAdd({me:false,n:c.n,ch:S.ch,t:c.t0,dur,chunks:c.chunks});
+ logAdd({me:false,n:(c.all?'[전체] ':'')+c.n,ch:c.ch,t:c.t0,dur,chunks:c.chunks});
  setTimeout(()=>{if(RX.cur===c){RX.cur=null;if(!TX.on)ui.idle();}},(t-now+.45)*1000);
 }
 function onLockChange(l){
@@ -361,7 +413,7 @@ function onLockChange(l){
 
 /* ---------- 기록 / 다시듣기 ---------- */
 const LOG=[];
-function logAdd(e){if(e.dur<0.15&&!e.chunks.some(c=>c.d))return;LOG.unshift(e);if(LOG.length>30)LOG.pop();}
+function logAdd(e){if(!e.alert&&e.dur<0.15&&!e.chunks.some(c=>c.d))return;LOG.unshift(e);if(LOG.length>30)LOG.pop();}
 async function replay(i){
  const e=LOG[i]; if(!e||TX.on||RX.cur){toast('채널 사용 중에는 재생 불가');return;}
  const r=makeStream(e.chunks[0]?e.chunks[0].c:'opus'); e.chunks.forEach(m=>feed(r,m)); await finishStream(r);
@@ -369,11 +421,15 @@ async function replay(i){
 }
 function renderLog(){
  $('#logCount').textContent=LOG.length+'건';
- $('#logList').innerHTML=LOG.length?LOG.map((e,i)=>`<li><b>CH${pad2(e.ch)}</b><span>${hhmmss(e.t)} · <span class="${e.me?'me':''}">${e.me?'▶ 나':'◀ '+esc(e.n)}</span> · ${e.dur.toFixed(1)}초</span><button data-i="${i}">재생</button></li>`).join(''):'<li><span>아직 교신 기록이 없습니다.</span></li>';
+ $('#logList').innerHTML=LOG.length?LOG.map((e,i)=>e.alert
+  ?`<li><b style="color:#ff6b60">긴급</b><span>${hhmmss(e.t)} · ${e.me?'▶ 나':'◀ '+esc(e.n)} · ${esc(e.msg)}${e.me?` · 확인 ${(e.acks||[]).length}명${(e.acks||[]).length?' ('+e.acks.map(esc).join(', ')+')':''}`:''}</span></li>`
+  :`<li><b>CH${pad2(e.ch)}</b><span>${hhmmss(e.t)} · <span class="${e.me?'me':''}">${e.me?'▶ 나':'◀ '+esc(e.n)}</span> · ${e.dur.toFixed(1)}초${e.me&&e.acks?` · 수신 ${e.acks.length}명`:''}</span><button data-i="${i}">재생</button></li>`).join(''):'<li><span>아직 교신 기록이 없습니다.</span></li>';
 }
 function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
-/* ---------- 통신: Firebase 중계 ---------- */
+/* ---------- 통신: Firebase 중계 ----------
+   radio/{그룹}/ch{n}/users|lock|chunks|acks   ch1 = 전체(모든 채널이 함께 수신)
+   radio/{그룹}/ch1/alerts                      긴급 호출                         */
 async function makeFirebase(cfg){
  const appM=await import(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-app.js`);
  const D=await import(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-database.js`);
@@ -381,18 +437,21 @@ async function makeFirebase(cfg){
  const db=D.getDatabase(app);
  let off=0; D.onValue(D.ref(db,'.info/serverTimeOffset'),s=>off=s.val()||0);
  const now=()=>Date.now()+off;
- let base=null,subs=[],lockRef=null,sent=[];
- const T={mode:'LTE',onConn:null,onLock:null,onUsers:null,onChunk:null,
+ let base=null,gbase=null,subs=[],lockRef=null,sent=[];
+ const sweep=(path,age)=>{const r=D.ref(db,path);D.get(D.query(r,D.orderByChild('t'),D.endAt(now()-age))).then(s=>{const u={};s.forEach(c=>{u[c.key]=null;});if(Object.keys(u).length)D.update(r,u);}).catch(()=>{});};
+ const listenChunks=(ch)=>D.onChildAdded(D.query(D.ref(db,`${gbase}/ch${ch}/chunks`),D.orderByChild('t'),D.startAt(now()-1500)),s=>{const v=s.val();if(v&&T.onChunk)T.onChunk(v,ch);});
+ const T={mode:'LTE',onConn:null,onLock:null,onUsers:null,onChunk:null,onAlert:null,
   async join(g,ch,me){
-   base=`radio/${g}/ch${ch}`; const b=base;
+   gbase=`radio/${g}`; base=`${gbase}/ch${ch}`; const b=base;
    const uref=D.ref(db,`${b}/users/${me.u}`);
    D.onDisconnect(uref).remove(); D.set(uref,{n:me.n,t:D.serverTimestamp()});
    subs.push(D.onValue(D.ref(db,`${b}/users`),s=>T.onUsers&&T.onUsers(s.val()||{})));
    lockRef=D.ref(db,`${b}/lock`);
    subs.push(D.onValue(lockRef,s=>T.onLock&&T.onLock(s.val())));
-   const cref=D.ref(db,`${b}/chunks`);
-   subs.push(D.onChildAdded(D.query(cref,D.orderByChild('t'),D.startAt(now()-1500)),s=>{const v=s.val();if(v&&T.onChunk)T.onChunk(v);}));
-   D.get(D.query(cref,D.orderByChild('t'),D.endAt(now()-60000))).then(s=>{const u={};s.forEach(c=>{u[c.key]=null;});if(Object.keys(u).length)D.update(cref,u);}).catch(()=>{});
+   subs.push(listenChunks(ch));
+   if(ch!==1) subs.push(listenChunks(1));                       // 본부(전체) 채널 항상 수신
+   subs.push(D.onChildAdded(D.query(D.ref(db,`${gbase}/ch1/alerts`),D.orderByChild('t'),D.startAt(now()-30000)),s=>{const v=s.val();if(v&&T.onAlert)T.onAlert(s.key,v);}));
+   sweep(`${b}/chunks`,60000); sweep(`${gbase}/ch1/alerts`,600000);
   },
   async leave(){subs.forEach(f=>f());subs=[];if(base){const uref=D.ref(db,`${base}/users/${ME.u}`);D.onDisconnect(uref).cancel();D.remove(uref).catch(()=>{});}base=null;},
   async acquire(){const lr=lockRef;try{
@@ -404,28 +463,40 @@ async function makeFirebase(cfg){
    D.set(D.ref(db,`${base}/chunks/${k}`),Object.assign({},m,{u:ME.u,n:ME.n,t:D.serverTimestamp()}));
    sent.push([base,k]);
    if(m.e){const ks=sent;sent=[];setTimeout(()=>{const by={};ks.forEach(([b,k])=>{(by[b]=by[b]||{})[k]=null;});for(const b in by)D.update(D.ref(db,`${b}/chunks`),by[b]).catch(()=>{});},20000);}  // 20초 후 서버에서 음성 삭제
-  }};
+  },
+  ack(ch,id){D.set(D.ref(db,`${gbase}/ch${ch}/acks/${id}/${ME.u}`),ME.n).catch(()=>{});},
+  watchAcks(ch,id,cb){const p=`${gbase}/ch${ch}/acks/${id}`;const offv=D.onValue(D.ref(db,p),s=>cb(s.val()||{}));
+   return ()=>{offv();D.get(D.ref(db,p)).then(s=>{const u={};s.forEach(c=>{u[c.key]=null;});if(Object.keys(u).length)D.update(D.ref(db,p),u);}).catch(()=>{});};},
+  sendAlert(a){const r=D.push(D.ref(db,`${gbase}/ch1/alerts`));D.set(r,Object.assign({},a,{u:ME.u,n:ME.n,t:D.serverTimestamp()}));return r.key;}
+ };
  D.onValue(D.ref(db,'.info/connected'),s=>T.onConn&&T.onConn(!!s.val()));
  return T;
 }
 /* ---------- 통신: 데모 (같은 기기 탭끼리) ---------- */
 function makeDemo(){
- let bc=null,hb=0,peers={},lk='';
+ let bc=null,hb=0,peers={},lk='',myCh=1,ackW={};
  const readLock=()=>{try{return JSON.parse(localStorage.getItem(lk));}catch(e){return null;}};
- const T={mode:'DEMO',onConn:null,onLock:null,onUsers:null,onChunk:null,
-  async join(g,ch,me){const key=`kcjr-demo-${g}-${ch}`;lk=key+'-lock';bc=new BroadcastChannel(key);peers={};peers[me.u]={n:me.n,t:Date.now()};
-   bc.onmessage=e=>{const d=e.data;if(d.k==='hb'){peers[d.u]={n:d.n,t:Date.now()};T.onUsers&&T.onUsers(peers);}
-    else if(d.k==='bye'){delete peers[d.u];T.onUsers&&T.onUsers(peers);}
-    else if(d.k==='lock'){T.onLock&&T.onLock(readLock());}
-    else if(d.k==='c'){T.onChunk&&T.onChunk(d.m);}};
-   const beat=()=>{if(!bc)return;bc.postMessage({k:'hb',u:me.u,n:me.n});const t=Date.now();for(const u in peers)if(u!==me.u&&t-peers[u].t>8000)delete peers[u];peers[me.u].t=t;T.onUsers&&T.onUsers(peers);};
+ const emitUsers=()=>{const o={};for(const u in peers)if(peers[u].ch===myCh)o[u]=peers[u];T.onUsers&&T.onUsers(o);};
+ const T={mode:'DEMO',onConn:null,onLock:null,onUsers:null,onChunk:null,onAlert:null,
+  async join(g,ch,me){myCh=ch;lk=`kcjr-demo-${g}-${ch}-lock`;bc=new BroadcastChannel(`kcjr-demo-${g}`);peers={};peers[me.u]={n:me.n,ch,t:Date.now()};
+   bc.onmessage=e=>{const d=e.data;
+    if(d.k==='hb'){peers[d.u]={n:d.n,ch:d.ch,t:Date.now()};emitUsers();}
+    else if(d.k==='bye'){delete peers[d.u];emitUsers();}
+    else if(d.k==='lock'){if(d.ch===myCh)T.onLock&&T.onLock(readLock());}
+    else if(d.k==='c'){if(d.ch===myCh||d.ch===1)T.onChunk&&T.onChunk(d.m,d.ch);}
+    else if(d.k==='ack'){const w=ackW[d.ch+'/'+d.id];if(w){w.v[d.u]=d.n;w.cb(Object.assign({},w.v));}}
+    else if(d.k==='alert'){T.onAlert&&T.onAlert(d.key,d.a);}};
+   const beat=()=>{if(!bc)return;bc.postMessage({k:'hb',u:me.u,n:me.n,ch:myCh});const t=Date.now();for(const u in peers)if(u!==me.u&&t-peers[u].t>8000)delete peers[u];peers[me.u].t=t;emitUsers();};
    beat();hb=setInterval(beat,3000);T.onLock&&T.onLock(readLock());setTimeout(()=>T.onConn&&T.onConn(true),0);},
   async leave(){if(bc){bc.postMessage({k:'bye',u:ME.u});bc.close();bc=null;}clearInterval(hb);},
   async acquire(){const l=readLock();if(l&&l.u!==ME.u&&Date.now()-l.t<(TOT_SEC+10)*1000)return false;
    localStorage.setItem(lk,JSON.stringify({u:ME.u,n:ME.n,t:Date.now()}));await new Promise(r=>setTimeout(r,80));
-   const c=readLock();const ok=!!(c&&c.u===ME.u);if(ok){bc&&bc.postMessage({k:'lock'});T.onLock&&T.onLock(c);}return ok;},
-  release(){const l=readLock();if(l&&l.u===ME.u){localStorage.removeItem(lk);bc&&bc.postMessage({k:'lock'});T.onLock&&T.onLock(null);}},
-  send(m){bc&&bc.postMessage({k:'c',m:Object.assign({},m,{u:ME.u,n:ME.n,t:Date.now()})});}};
+   const c=readLock();const ok=!!(c&&c.u===ME.u);if(ok){bc&&bc.postMessage({k:'lock',ch:myCh});T.onLock&&T.onLock(c);}return ok;},
+  release(){const l=readLock();if(l&&l.u===ME.u){localStorage.removeItem(lk);bc&&bc.postMessage({k:'lock',ch:myCh});T.onLock&&T.onLock(null);}},
+  send(m){bc&&bc.postMessage({k:'c',ch:myCh,m:Object.assign({},m,{u:ME.u,n:ME.n,t:Date.now()})});},
+  ack(ch,id){bc&&bc.postMessage({k:'ack',ch,id,u:ME.u,n:ME.n});},
+  watchAcks(ch,id,cb){const key=ch+'/'+id;ackW[key]={v:{},cb};return ()=>{delete ackW[key];};},
+  sendAlert(a){const key='a'+Date.now().toString(36);bc&&bc.postMessage({k:'alert',key,a:Object.assign({},a,{u:ME.u,n:ME.n,t:Date.now()})});return key;}};
  return T;
 }
 
@@ -436,7 +507,8 @@ async function connect(){
  try{ net=cfg?await makeFirebase(cfg):makeDemo(); }
  catch(e){console.error(e);toast('서버 연결 실패 → 데모 모드');net=makeDemo();}
  net.onConn=c=>{CONNECTED=c;ui.sig();if(!TX.on&&!RX.cur)ui.idle();};
- net.onUsers=u=>{$('#users').textContent='접속 '+Object.keys(u).length;};
+ net.onUsers=u=>{USERS=Object.keys(u).length;$('#users').textContent='접속 '+USERS;};
+ net.onAlert=onAlert;
  net.onLock=onLockChange; net.onChunk=onChunk;
  await net.join(cleanGroup(S.group),S.ch,ME);
 }
@@ -454,7 +526,86 @@ async function powerOn(){
  sfx.tone(880,sfx.now(),.08,.12);sfx.tone(1320,sfx.now()+.1,.1,.12);
  ui.ch(); ui.status('연결 중…');
  await connect(); wake(); ui.sig();
+ nativeCall('start',{});
+ if(NATIVE){try{const o=A.ctx.createOscillator(),g=A.ctx.createGain();o.frequency.value=25;g.gain.value=.002;o.connect(g).connect(A.ctx.destination);o.start();}catch(e){}}   // 백그라운드에서 오디오가 멈추지 않게 유지(들리지 않는 저주파)
 }
+
+/* ---------- 긴급 호출: 경보음 ---------- */
+const ALARMS={siren:'사이렌',beep:'경보 비프',horn:'경적',chime:'차임',whoop:'상승음'};
+const alarm={on:false,timer:0,g:null,vt:0,
+ start(id,dur){
+  this.stop(); if(!A.ctx)return; A.ctx.resume();
+  this.on=true; const g=A.ctx.createGain(); g.gain.value=.5; g.connect(A.ctx.destination); this.g=g;
+  let t=A.ctx.currentTime+.05; const end=t+dur;
+  const seg=()=>{ if(!this.on||this.g!==g)return; const now=A.ctx.currentTime;
+   while(t<now+1.2&&t<end) t+=this.pattern(id,t,g);
+   if(t>=end){this.timer=setTimeout(()=>this.stop(),(end-now)*1000+300);return;}
+   this.timer=setTimeout(seg,400);};
+  seg();
+ },
+ pattern(id,t,g){const c=A.ctx;
+  const osc=(type,f0,f1,st,d,v)=>{const o=c.createOscillator(),e=c.createGain();o.type=type;o.frequency.setValueAtTime(f0,st);if(f1)o.frequency.linearRampToValueAtTime(f1,st+d);
+   e.gain.setValueAtTime(0,st);e.gain.linearRampToValueAtTime(v,st+.01);e.gain.setValueAtTime(v,st+d-.02);e.gain.linearRampToValueAtTime(0,st+d);o.connect(e).connect(g);o.start(st);o.stop(st+d+.03);};
+  const bell=(f,st)=>{const o=c.createOscillator(),e=c.createGain();o.type='sine';o.frequency.value=f;e.gain.setValueAtTime(.7,st);e.gain.exponentialRampToValueAtTime(.001,st+1.1);o.connect(e).connect(g);o.start(st);o.stop(st+1.15);};
+  switch(id){
+   case 'beep': osc('square',1050,0,t,.15,.45); return .3;
+   case 'horn': osc('square',440,0,t,.6,.35); osc('square',554,0,t,.6,.35); return .9;
+   case 'chime': [1047,1319,1568].forEach((f,i)=>bell(f,t+i*.22)); return 1.3;
+   case 'whoop': osc('sine',400,1600,t,.8,.8); return 1;
+   default: osc('sawtooth',650,1250,t,.5,.45); osc('sawtooth',1250,650,t+.5,.5,.45); return 1;   // siren
+  }},
+ stop(){this.on=false;clearTimeout(this.timer);if(this.g){try{this.g.disconnect();}catch(e){}this.g=null;}}
+};
+/* 받은 긴급 호출 */
+const ALERT={key:null,a:null,vt:0};
+function onAlert(key,a){
+ if(!POWER||!a||a.u===ME.u)return;
+ ALERT.key=key;ALERT.a=a;
+ $('#aFrom').textContent=hhmmss(Date.now())+' · '+(a.n||'');
+ $('#aMsg').textContent=a.m||'긴급 호출';
+ $('#alarm').classList.add('show');
+ alarm.start(a.s||'siren',20);
+ clearInterval(ALERT.vt);vib([600,300,600,300,600]);ALERT.vt=setInterval(()=>vib([600,300,600,300,600]),2800);
+ setTimeout(()=>clearInterval(ALERT.vt),20000);
+ logAdd({alert:true,me:false,n:a.n,msg:a.m||'',t:Date.now(),dur:0,chunks:[],ch:1});
+ nativeNotify('긴급 호출 · '+(a.n||'')+' · '+(a.m||''));
+}
+$('#aAck').onclick=()=>{alarm.stop();clearInterval(ALERT.vt);vib(0);$('#alarm').classList.remove('show');
+ if(ALERT.key&&net)net.ack(1,ALERT.key);ALERT.key=null;};
+/* 보내는 긴급 호출 */
+let EMG_SND=LS.get('emgSnd','siren'), EMG_OFF=null;
+function renderAlarmList(){
+ $('#aList').innerHTML=Object.entries(ALARMS).map(([k,v])=>`<label class="${k===EMG_SND?'on':''}"><input type="radio" name="asnd" value="${k}" ${k===EMG_SND?'checked':''}>${v}<button type="button" data-p="${k}">▶</button></label>`).join('');
+}
+$('#aList').addEventListener('click',e=>{
+ const b=e.target.closest('button[data-p]'); if(b){e.preventDefault();if(A.ctx){alarm.start(b.dataset.p,2.2);}else toast('전원을 먼저 켜세요');return;}
+ const r=e.target.closest('input[name=asnd]'); if(r){EMG_SND=r.value;LS.set('emgSnd',EMG_SND);renderAlarmList();}
+});
+$('#emgPreset').onchange=()=>{$('#emgMsg').style.display=$('#emgPreset').value==='직접 입력'?'block':'none';};
+(function(){const btn=$('#emgSend'),bar=btn.querySelector('i');let t=0,start=0,raf=0;
+ const reset=()=>{clearTimeout(t);cancelAnimationFrame(raf);bar.style.width='0';};
+ const anim=()=>{bar.style.width=Math.min(100,(Date.now()-start)/10)+'%';raf=requestAnimationFrame(anim);};
+ btn.addEventListener('pointerdown',e=>{e.preventDefault();if(!POWER||!CONNECTED||!net){toast('무전기를 켜고 연결된 상태에서 보내세요');return;}
+  start=Date.now();anim();t=setTimeout(()=>{reset();sendEmergency();},1000);});
+ ['pointerup','pointerleave','pointercancel'].forEach(ev=>btn.addEventListener(ev,reset));
+})();
+function sendEmergency(){
+ let m=$('#emgPreset').value; if(m==='직접 입력')m=($('#emgMsg').value||'').trim().slice(0,30)||'긴급 호출';
+ const key=net.sendAlert({s:EMG_SND,m});
+ vib(200); sfx.permit();
+ const e={alert:true,me:true,n:ME.n,msg:m,t:Date.now(),dur:0,chunks:[],ch:1,acks:[]}; logAdd(e);
+ if(EMG_OFF)EMG_OFF();
+ const show=names=>{$('#emgStatus').innerHTML=`발송 ${hhmmss(e.t)} · "${esc(m)}"<br>확인 <b>${names.length}명</b>${names.length?' : '+names.map(esc).join(', '):' (기다리는 중…)'}`;};
+ show([]);
+ EMG_OFF=net.watchAcks(1,key,v=>{e.acks=Object.values(v);show(e.acks);});
+ setTimeout(()=>{if(EMG_OFF){EMG_OFF();EMG_OFF=null;}},600000);
+}
+/* ---------- APK(안드로이드 앱) 연동 ---------- */
+const NATIVE=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
+function nativeCall(m,o){try{if(NATIVE&&window.Capacitor.nativePromise)return window.Capacitor.nativePromise('KCJRadio',m,o||{}).catch(()=>{});}catch(e){}}
+let NN='';function nativeNotify(t){if(t===NN)return;NN=t;nativeCall('status',{text:t});}
+window.kcjPTT=down=>{if(document.querySelector('.sheet.show'))return;down?txStart():txStop();};      // 볼륨(−) 버튼
+window.kcjPTTToggle=()=>{TX.on?txStop():txStart();};                                               // 블루투스 이어폰 버튼
 
 /* ---------- 화면 ---------- */
 const ui={
@@ -464,12 +615,18 @@ const ui={
   $('#knobMark').parentElement.style.transform='rotate('+((S.ch-1)*(300/(CH_MAX-1))-150)+'deg)';},
  status(t,inv){const s=$('#status');s.textContent=t;s.classList.toggle('inv',!!inv);},
  led(c){$('#led').className=c||'';},
- idle(){if(!POWER)return;$('#ptt').className='';
+ idle(){if(!POWER)return;$('#ptt').className='';if(NATIVE)nativeNotify(CONNECTED?'수신 대기 중 · CH'+pad2(S.ch):'연결 끊김 · 재접속 중');
   if(!CONNECTED){ui.led('off');ui.status('연결 끊김 · 재접속 중');return;}
   ui.led('');ui.status((net&&net.mode==='DEMO')?'대기 (데모 모드)':'대기');},
  tx(){$('#ptt').className='tx';ui.led('tx');ui.status('▶ 송신 00:00',true);},
  txTime(){const s=Math.floor((Date.now()-TX.t0)/1000);ui.status('▶ 송신 '+pad2(Math.floor(s/60))+':'+pad2(s%60)+(TX.granted?'':' …'),true);},
  rx(n){$('#ptt').className='busy';ui.led('rx');ui.status('◀ 수신  '+(n||''),true);},
+ ackShow(live){
+  if(!live)ACKW.showUntil=Date.now()+6000;
+  if(TX.on||RX.cur)return;
+  const n=ACKW.names.length,tot=Math.max(0,USERS-1);
+  ui.status(ACKW.ch===1?`수신 확인 ${n}명`:`수신 확인 ${n}/${tot}`,false);
+  clearTimeout(ui._ackT);ui._ackT=setTimeout(()=>{if(!TX.on&&!RX.cur)ui.idle();},Math.max(0,ACKW.showUntil-Date.now()));},
  busyFlash(){const p=$('#ptt');p.classList.add('busy');setTimeout(()=>{if(!RX.cur&&!TX.on)p.classList.remove('busy');},600);},
  sig(){const c=navigator.connection;let lv=CONNECTED?4:0,lbl=CONNECTED?'LTE':'NO SIG';
   if(CONNECTED&&c&&c.effectiveType){lv={'slow-2g':1,'2g':1,'3g':2,'4g':4}[c.effectiveType]||4;if(c.type==='wifi')lbl='WIFI';}
@@ -504,6 +661,7 @@ $('#chDn').onclick=()=>setChannel(S.ch-1);
 })();
 function openSheet(id){document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('show'));$(id).classList.add('show');}
 document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('.sheet').classList.remove('show'));
+$('#bEmg').onclick=()=>{if(TX.on)return;renderAlarmList();openSheet('#emgSheet');};
 $('#bLog').onclick=()=>{renderLog();openSheet('#logSheet');};
 $('#logList').onclick=e=>{const b=e.target.closest('button[data-i]');if(b)replay(+b.dataset.i);};
 function inviteUrl(){const u=new URL(location.href.split('?')[0]);u.searchParams.set('g',cleanGroup(S.group));u.searchParams.set('ch',S.ch);
