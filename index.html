@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0b1322">
+<meta name="mobile-web-app-capable" content="yes">
+<title>KCJ 현장무전기</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:#05080f;color:#e8edf5;font-family:-apple-system,"Malgun Gothic","Apple SD Gothic Neo",sans-serif;overflow:hidden;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+#wrap{height:100%;display:flex;align-items:center;justify-content:center;padding:max(10px,env(safe-area-inset-top)) 10px max(10px,env(safe-area-inset-bottom))}
+#radio{position:relative;width:min(420px,100%);height:min(860px,100%);display:flex;flex-direction:column;gap:10px;padding:16px 16px 18px;border-radius:28px 28px 34px 34px;
+background:linear-gradient(160deg,#1d2a40 0%,#121c2e 45%,#0b1322 100%);box-shadow:inset 0 2px 0 #34476a,inset 0 -3px 0 #060a12,0 10px 40px #000}
+#radio:before{content:"";position:absolute;left:10px;right:10px;top:10px;bottom:10px;border-radius:22px 22px 28px 28px;border:1px solid #24344f;pointer-events:none}
+.antenna{position:absolute;top:-6px;left:34px;width:26px;height:10px;border-radius:6px 6px 0 0;background:#0a0f19}
+.top{display:flex;align-items:center;justify-content:space-between;height:86px;flex:0 0 auto}
+.brand{font-weight:800;letter-spacing:3px;color:#f5a623;font-size:15px}
+.brand small{display:block;color:#7d8ba3;font-size:10px;letter-spacing:2px;font-weight:600}
+#led{width:16px;height:16px;border-radius:50%;background:#2a3346;box-shadow:inset 0 1px 2px #000;margin:0 auto 4px}
+#led.tx{background:#ff3b30;box-shadow:0 0 14px #ff3b30,0 0 4px #fff inset}
+#led.rx{background:#30d158;box-shadow:0 0 14px #30d158,0 0 4px #fff inset}
+#led.off{animation:blink 1s infinite;background:#f5a623}
+@keyframes blink{50%{opacity:.15}}
+.ledbox{text-align:center;font-size:9px;color:#7d8ba3;letter-spacing:1px}
+#knob{width:78px;height:78px;border-radius:50%;position:relative;touch-action:none;cursor:grab;
+background:repeating-conic-gradient(#2c3a55 0 6deg,#18233a 6deg 12deg);box-shadow:0 4px 10px #000,inset 0 0 0 6px #0d1524}
+#knobCap{position:absolute;inset:14px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#3d4f73,#162033);box-shadow:0 2px 4px #000}
+#knobMark{position:absolute;left:50%;top:6px;width:4px;height:14px;margin-left:-2px;border-radius:2px;background:#f5a623}
+.knobLbl{font-size:9px;color:#7d8ba3;text-align:center;margin-top:4px;letter-spacing:1px}
+#lcd{flex:0 0 auto;border-radius:12px;padding:10px 14px 12px;color:#2a1800;font-family:"Courier New",ui-monospace,monospace;
+background:linear-gradient(180deg,#ffbf47,#f5a623 60%,#e08f12);box-shadow:inset 0 3px 8px rgba(0,0,0,.45),0 0 0 4px #0a101c,0 0 0 5px #2c3c5a;transition:filter .2s}
+#lcd.dim{filter:brightness(.55) saturate(.6)}
+.row{display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:700}
+.bars{display:inline-flex;gap:2px;align-items:flex-end;height:13px;vertical-align:-1px}
+.bars i{display:block;width:4px;background:#2a1800;opacity:.18}
+.bars i.on{opacity:1}
+#chBig{font-size:64px;font-weight:900;line-height:1;letter-spacing:2px;text-align:center;margin:4px 0 2px}
+#chBig span{font-size:20px;letter-spacing:1px;vertical-align:28px;margin-right:6px}
+#who{font-size:14px;font-weight:700;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#status{margin-top:8px;padding:6px 8px;border-radius:6px;background:rgba(42,24,0,.12);font-size:17px;font-weight:900;text-align:center;min-height:34px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#status.inv{background:#2a1800;color:#ffbf47}
+#meter{display:flex;gap:3px;height:10px;margin-top:8px}
+#meter i{flex:1;background:#2a1800;opacity:.15;border-radius:1px}
+#meter i.on{opacity:.9}
+.grill{flex:1 1 auto;min-height:40px;border-radius:12px;background:radial-gradient(circle,#060a12 1.6px,transparent 2px) 0 0/10px 10px,#141f33;box-shadow:inset 0 2px 6px #000}
+.keys{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;flex:0 0 auto}
+.keys button{height:46px;border:0;border-radius:10px;font-weight:800;font-size:13px;color:#cfd8e6;background:linear-gradient(#2a3a57,#1a2740);box-shadow:0 3px 0 #070b14,inset 0 1px 0 #3d5278}
+.keys button:active{transform:translateY(2px);box-shadow:0 1px 0 #070b14}
+#ptt{flex:0 0 auto;height:min(30vh,230px);border:0;border-radius:22px;touch-action:none;color:#0b1322;font-weight:900;font-size:26px;letter-spacing:3px;
+background:repeating-linear-gradient(0deg,rgba(0,0,0,.08) 0 3px,transparent 3px 9px),linear-gradient(#ffbf47,#e8940f);box-shadow:0 8px 0 #7a4d06,0 10px 18px #000,inset 0 2px 0 #ffe0a0;transition:transform .05s}
+#ptt small{display:block;font-size:12px;letter-spacing:2px;opacity:.75;margin-top:6px}
+#ptt.tx{transform:translateY(6px);box-shadow:0 2px 0 #7a1d16,0 4px 10px #000;background:repeating-linear-gradient(0deg,rgba(0,0,0,.1) 0 3px,transparent 3px 9px),linear-gradient(#ff5b4f,#d42b20);color:#fff}
+#ptt.busy{filter:grayscale(.8) brightness(.7)}
+.sheet{position:fixed;inset:0;background:rgba(3,6,12,.82);display:none;align-items:flex-end;justify-content:center;z-index:20}
+.sheet.show{display:flex}
+.panel{width:min(460px,100%);max-height:92%;overflow:auto;background:#121c2e;border-radius:20px 20px 0 0;padding:20px 18px 26px;box-shadow:0 -6px 30px #000;user-select:text;-webkit-user-select:text}
+.panel h2{margin:0 0 14px;font-size:19px;color:#f5a623}
+.panel label{display:block;font-size:13px;color:#9aa8c0;margin:12px 0 5px}
+.panel input,.panel select,.panel textarea{width:100%;padding:12px;border-radius:10px;border:1px solid #2c3c5a;background:#0b1322;color:#fff;font-size:16px}
+.panel textarea{font-size:12px;font-family:ui-monospace,monospace;height:110px}
+.panel .hint{font-size:12px;color:#7d8ba3;margin-top:5px;line-height:1.5}
+.btn{display:block;width:100%;margin-top:16px;padding:15px;border:0;border-radius:12px;font-size:17px;font-weight:800;background:#f5a623;color:#0b1322}
+.btn.sec{background:#24344f;color:#e8edf5}
+details{margin-top:14px;border-top:1px solid #24344f;padding-top:10px}
+summary{color:#9aa8c0;font-size:14px}
+#logList{list-style:none;padding:0;margin:0}
+#logList li{display:flex;align-items:center;gap:10px;padding:11px 4px;border-bottom:1px solid #1f2c45;font-size:14px}
+#logList li b{color:#f5a623;min-width:46px}
+#logList li .me{color:#ff8a80}
+#logList li span{flex:1}
+#logList button{border:0;border-radius:8px;padding:8px 12px;background:#24344f;color:#fff;font-weight:700}
+#qr{background:#fff;border-radius:12px;padding:12px;width:240px;margin:6px auto;display:block}
+#qr svg{width:100%;height:auto;display:block}
+#inviteUrl{word-break:break-all;font-size:11px;color:#9aa8c0;background:#0b1322;padding:10px;border-radius:8px}
+#power{position:fixed;inset:0;z-index:15;display:none;align-items:center;justify-content:center;background:rgba(3,6,12,.75)}
+#power.show{display:flex}
+#power button{width:150px;height:150px;border-radius:50%;border:0;font-size:52px;color:#f5a623;background:radial-gradient(circle at 35% 30%,#2c3c5a,#0b1322);box-shadow:0 0 0 6px #1d2a40,0 10px 30px #000}
+#power p{position:absolute;bottom:22%;width:100%;text-align:center;color:#9aa8c0;font-size:14px}
+#toast{position:fixed;left:50%;top:18px;transform:translateX(-50%);background:#f5a623;color:#0b1322;font-weight:800;padding:10px 18px;border-radius:20px;z-index:30;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
+#toast.show{opacity:1}
+.mode{font-size:11px;padding:2px 6px;border-radius:4px;background:#2a1800;color:#ffbf47}
+</style>
+</head>
+<body>
+<div id="wrap">
+<div id="radio">
+  <div class="antenna"></div>
+  <div class="top">
+    <div class="brand">KCJ RADIO<small>FIELD SURVEY PTT</small></div>
+    <div class="ledbox"><div id="led" class="off"></div>TX/RX</div>
+    <div><div id="knob"><div id="knobCap"></div><div id="knobMark"></div></div><div class="knobLbl">CHANNEL</div></div>
+  </div>
+
+  <div id="lcd" class="dim">
+    <div class="row">
+      <span><span class="bars" id="sig"><i style="height:4px"></i><i style="height:7px"></i><i style="height:10px"></i><i style="height:13px"></i></span> <span id="net">----</span></span>
+      <span id="users">접속 -</span>
+      <span id="bat">BAT --%</span>
+    </div>
+    <div id="chBig"><span>CH</span>01</div>
+    <div id="who">그룹 ---- · ----</div>
+    <div id="status">전원 OFF</div>
+    <div id="meter"></div>
+  </div>
+
+  <div class="grill"></div>
+
+  <div class="keys">
+    <button id="chDn">CH▼</button>
+    <button id="chUp">CH▲</button>
+    <button id="bLog">기록</button>
+    <button id="bInv">초대</button>
+    <button id="bSet">설정</button>
+  </div>
+
+  <button id="ptt">PTT<small>누르고 말하기</small></button>
+</div>
+</div>
+
+<div id="power"><button id="powerBtn">⏻</button><p>전원을 눌러 무전기를 켜세요</p></div>
+
+<div class="sheet" id="setSheet"><div class="panel">
+  <h2>무전기 설정</h2>
+  <label>호출명 (이름 또는 위치)</label>
+  <input id="fName" maxlength="12" placeholder="예: 조사1, 현장A">
+  <label>그룹코드 (팀 전용 암호)</label>
+  <input id="fGroup" maxlength="24" placeholder="예: KCJ2026">
+  <div class="hint">같은 그룹코드끼리만 들립니다. 영문·숫자로 정하고 외부에 알리지 마세요.</div>
+  <label>채널</label>
+  <select id="fCh"></select>
+  <details id="cfgBox">
+    <summary>서버 설정 (Firebase)</summary>
+    <label>Firebase 설정값 붙여넣기</label>
+    <textarea id="fCfg" placeholder='const firebaseConfig = { apiKey: "...", databaseURL: "https://....firebasedatabase.app", projectId: "...", appId: "..." };'></textarea>
+    <div class="hint">비워두면 <b>데모 모드</b>로 동작합니다 (같은 폰/PC의 브라우저 탭끼리만 통신, 화면·소리 확인용).</div>
+  </details>
+  <button class="btn" id="saveBtn">저장하고 켜기</button>
+  <button class="btn sec" id="closeSet">닫기</button>
+</div></div>
+
+<div class="sheet" id="logSheet"><div class="panel">
+  <h2>교신 기록 <span class="mode" id="logCount"></span></h2>
+  <ul id="logList"></ul>
+  <div class="hint">기록은 이 폰에만 최근 30건 보관되며 앱을 닫으면 지워집니다.</div>
+  <button class="btn sec" data-close>닫기</button>
+</div></div>
+
+<div class="sheet" id="invSheet"><div class="panel">
+  <h2>팀원 초대</h2>
+  <div class="hint">팀원이 QR을 찍거나 링크를 열면 같은 그룹·채널·서버로 바로 설정됩니다. 호출명만 입력하면 됩니다.</div>
+  <div id="qr"></div>
+  <div id="inviteUrl"></div>
+  <button class="btn" id="shareBtn">링크 공유</button>
+  <button class="btn sec" data-close>닫기</button>
+</div></div>
+
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<script>
+"use strict";
+/* ===== 설정 =====
+   GitHub에 올리기 전에 Firebase 설정값을 여기 붙여넣으면 팀원은 별도 설정 없이 사용합니다.
+   예: const EMBED_CFG = { apiKey:"...", authDomain:"...", databaseURL:"...", projectId:"...", appId:"..." };  */
+const EMBED_CFG = {
+  apiKey: "AIzaSyD7zyGCsAgJDu2sRevZa6RWPubdr_Gay-0",
+  authDomain: "kcj-radio-9d984.firebaseapp.com",
+  databaseURL: "https://kcj-radio-9d984-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "kcj-radio-9d984",
+  storageBucket: "kcj-radio-9d984.firebasestorage.app",
+  messagingSenderId: "39816778211",
+  appId: "1:39816778211:web:a0b4b716a5669a9f4990d6"
+};
+const CH_MAX = 16, TOT_SEC = 60, FB_VER = '10.12.2';
+const CH_NAMES = {1:'전체',9:'비상'};
+
+const $ = s => document.querySelector(s);
+const LS = {get(k,d){try{const v=localStorage.getItem('kcjr_'+k);return v===null?d:JSON.parse(v);}catch(e){return d;}},set(k,v){try{localStorage.setItem('kcjr_'+k,JSON.stringify(v));}catch(e){}}};
+const uid = Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);   // 실행할 때마다 새 ID (탭별 구분)
+const S = {name:LS.get('name',''), group:LS.get('group',''), ch:LS.get('ch',1), cfg:LS.get('cfg',null)};
+const ME = {u:uid, n:S.name};
+let net=null, LOCK=null, CONNECTED=false, POWER=false;
+
+/* ---------- URL 초대 파라미터 ---------- */
+(function(){const p=new URLSearchParams(location.search);
+ if(p.get('g')) S.group=p.get('g');
+ if(p.get('ch')) S.ch=Math.min(CH_MAX,Math.max(1,parseInt(p.get('ch'))||1));
+ if(p.get('cfg')){try{S.cfg=JSON.parse(decodeURIComponent(escape(atob(p.get('cfg').replace(/-/g,'+').replace(/_/g,'/')))));}catch(e){}}
+ if([...p.keys()].length){LS.set('group',S.group);LS.set('ch',S.ch);if(S.cfg)LS.set('cfg',S.cfg);history.replaceState(null,'',location.pathname);}
+})();
+function activeCfg(){return EMBED_CFG||S.cfg;}
+function cleanGroup(g){return (g||'').trim().replace(/[^A-Za-z0-9_\-가-힣]/g,'').slice(0,24);}
+function parseCfg(t){t=(t||'').trim(); if(!t) return null; const o={};
+ ['apiKey','authDomain','databaseURL','projectId','storageBucket','messagingSenderId','appId'].forEach(k=>{const m=t.match(new RegExp(k+'["\']?\\s*:\\s*["\']([^"\']+)["\']'));if(m)o[k]=m[1];});
+ return (o.databaseURL&&o.apiKey)?o:false;}
+
+/* ---------- 유틸 ---------- */
+function b64e(u8){let s='';for(let i=0;i<u8.length;i+=0x8000)s+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000));return btoa(s);}
+function b64d(s){const b=atob(s),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u;}
+function pack(list){let n=0;list.forEach(p=>n+=2+p.length);const o=new Uint8Array(n);let i=0;list.forEach(p=>{o[i++]=p.length>>8;o[i++]=p.length&255;o.set(p,i);i+=p.length;});return o;}
+function unpack(u8){const out=[];let i=0;while(i+2<=u8.length){const l=(u8[i]<<8)|u8[i+1];i+=2;out.push(u8.subarray(i,i+l));i+=l;}return out;}
+function vib(p){try{navigator.vibrate&&navigator.vibrate(p);}catch(e){}}
+let toastT; function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),1800);}
+function pad2(n){return String(n).padStart(2,'0');}
+function hhmmss(t){const d=new Date(t);return pad2(d.getHours())+':'+pad2(d.getMinutes())+':'+pad2(d.getSeconds());}
+
+/* ---------- μ-law (Opus 미지원 기기용 예비 코덱) ---------- */
+function ulawEnc(s){let x=Math.max(-1,Math.min(1,s))*32635;const sign=x<0?0x80:0;if(sign)x=-x;x+=132;let e=7;for(let m=0x4000;(x&m)===0&&e>0;e--,m>>=1);const man=(x>>(e+3))&15;return ~(sign|(e<<4)|man)&255;}
+function ulawDec(u){u=~u&255;const sign=u&0x80,e=(u>>4)&7,m=u&15;let x=((m<<3)+132)<<e;x-=132;return (sign?-x:x)/32768;}
+
+/* ---------- 오디오 ---------- */
+const A={ctx:null,sr:48000,node:null,out:null,an:null,codec:'ulaw',stream:null};
+let ENC_CFG=null;
+async function initAudio(){
+ if(A.ctx){await A.ctx.resume();return;}
+ try{A.ctx=new AudioContext({sampleRate:48000,latencyHint:'interactive'});}catch(e){A.ctx=new AudioContext();}
+ await A.ctx.resume(); A.sr=A.ctx.sampleRate;
+ A.out=A.ctx.createGain(); A.out.connect(A.ctx.destination);
+ A.an=A.ctx.createAnalyser(); A.an.fftSize=512; A.out.connect(A.an);
+ A.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1}});
+ const wl=`class P extends AudioWorkletProcessor{constructor(){super();this.on=false;this.b=new Float32Array(960);this.n=0;this.port.onmessage=e=>{this.on=e.data;this.n=0;};}
+ process(i){const c=i[0]&&i[0][0];if(this.on&&c){for(let k=0;k<c.length;k++){this.b[this.n++]=c[k];if(this.n===960){this.port.postMessage(this.b.slice(0));this.n=0;}}}return true;}}registerProcessor('cap',P);`;
+ await A.ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([wl],{type:'application/javascript'})));
+ A.node=new AudioWorkletNode(A.ctx,'cap');
+ const z=A.ctx.createGain(); z.gain.value=0;
+ A.ctx.createMediaStreamSource(A.stream).connect(A.node); A.node.connect(z).connect(A.ctx.destination);
+ A.node.port.onmessage=e=>onPcm(e.data);
+ ENC_CFG={codec:'opus',sampleRate:A.sr,numberOfChannels:1,bitrate:16000};
+ if('AudioEncoder' in window&&'AudioDecoder' in window){try{
+   const r=await AudioEncoder.isConfigSupported(ENC_CFG);
+   const d=await AudioDecoder.isConfigSupported({codec:'opus',sampleRate:48000,numberOfChannels:1});
+   if(r.supported&&d.supported)A.codec='opus';}catch(e){}}
+}
+const sfx={
+ tone(f,t,d,g=.15,type='sine'){if(!A.ctx)return;const o=A.ctx.createOscillator(),v=A.ctx.createGain();o.type=type;o.frequency.value=f;
+  v.gain.setValueAtTime(0,t);v.gain.linearRampToValueAtTime(g,t+.005);v.gain.setValueAtTime(g,t+d-.01);v.gain.linearRampToValueAtTime(0,t+d);
+  o.connect(v).connect(A.out);o.start(t);o.stop(t+d+.02);},
+ noise(t,d,g){if(!A.ctx)return;const n=Math.floor(A.ctx.sampleRate*d),b=A.ctx.createBuffer(1,n,A.ctx.sampleRate),c=b.getChannelData(0);
+  for(let i=0;i<n;i++)c[i]=(Math.random()*2-1)*(1-i/n);const s=A.ctx.createBufferSource();s.buffer=b;
+  const f=A.ctx.createBiquadFilter();f.type='bandpass';f.frequency.value=2600;f.Q.value=.6;const v=A.ctx.createGain();v.gain.value=g;
+  s.connect(f).connect(v).connect(A.out);s.start(t);},
+ now(){return A.ctx?A.ctx.currentTime:0;},
+ roger(t){this.tone(1400,t,.07,.13);this.tone(1000,t+.08,.09,.13);},     // 송신 끝 '삐빅'
+ tail(t){this.noise(t,.2,.45);},                                            // 수신 끝 '치익'
+ open(){this.noise(this.now(),.06,.25);},                                   // 수신 시작 '칙'
+ permit(){this.tone(1750,this.now(),.05,.1);},                              // 송신 허가음
+ busy(){const t=this.now();for(let i=0;i<3;i++)this.tone(420,t+i*.16,.1,.16,'square');},
+ click(){this.tone(2200,this.now(),.015,.08,'square');}
+};
+
+/* ---------- 송신 ---------- */
+const TX={on:false,stopping:false,granted:false,enc:null,ts:0,pk:[],seq:0,id:'',pending:[],rec:[],t0:0,level:0,grantP:null,tot:0,tick:0};
+function onPcm(f){
+ if(!TX.on||TX.stopping)return;
+ let s=0;for(let i=0;i<f.length;i+=4)s+=f[i]*f[i];TX.level=Math.min(1,Math.sqrt(s/(f.length/4))*5);
+ if(A.codec==='opus'){ if(!TX.enc||TX.enc.state!=='configured')return;
+  const ad=new AudioData({format:'f32-planar',sampleRate:A.sr,numberOfFrames:f.length,numberOfChannels:1,timestamp:TX.ts,data:f});
+  TX.ts+=Math.round(f.length/A.sr*1e6); TX.enc.encode(ad); ad.close();
+ } else {
+  const r=A.sr/8000,n=Math.floor(f.length/r),u=new Uint8Array(n);
+  for(let i=0;i<n;i++){const a=Math.floor(i*r),b=Math.floor((i+1)*r);let m=0;for(let k=a;k<b;k++)m+=f[k];u[i]=ulawEnc(m/(b-a));}
+  addPacket(u);
+ }
+}
+function addPacket(u8){TX.pk.push(u8); if(TX.pk.length>=10) flushPk(false);}   // 20ms × 10 = 0.2초 단위 전송
+function flushPk(fin){
+ if(!TX.pk.length&&!fin)return;
+ const m={x:TX.id,s:TX.seq++,c:A.codec}; if(TX.pk.length)m.d=b64e(pack(TX.pk)); TX.pk=[]; if(fin)m.e=1;
+ TX.rec.push(m); if(TX.granted) net.send(m); else TX.pending.push(m);
+}
+function channelBusy(){return (LOCK&&LOCK.u!==ME.u)||(RX.cur&&!RX.cur.ending);}
+function txStart(){
+ if(!POWER||TX.on||!A.ctx)return;
+ if(!CONNECTED){sfx.busy();toast('서버 연결 안 됨');return;}
+ if(channelBusy()){sfx.busy();vib([60,40,60]);toast('채널 사용중');ui.busyFlash();return;}
+ Object.assign(TX,{on:true,stopping:false,granted:false,pending:[],rec:[],pk:[],seq:0,ts:0,level:0,id:uid.slice(0,6)+Date.now().toString(36),t0:Date.now()});
+ if(A.codec==='opus'){TX.enc=new AudioEncoder({output:c=>{const u=new Uint8Array(c.byteLength);c.copyTo(u);addPacket(u);},error:e=>console.warn('enc',e)});TX.enc.configure(ENC_CFG);}
+ A.node.port.postMessage(true); ui.tx(); vib(25);
+ TX.grantP=net.acquire().then(ok=>{
+  if(ok){TX.granted=true;sfx.permit();TX.pending.forEach(m=>net.send(m));TX.pending=[];}
+  else{sfx.busy();vib([60,40,60]);toast('채널 사용중');if(!TX.stopping)txAbort();}
+  return ok;});
+ TX.tot=setTimeout(()=>{toast('송신 '+TOT_SEC+'초 제한');txStop();},TOT_SEC*1000);
+ TX.tick=setInterval(ui.txTime,250);
+}
+function txAbort(){A.node.port.postMessage(false);clearTimeout(TX.tot);clearInterval(TX.tick);
+ if(TX.enc){try{TX.enc.close();}catch(e){}TX.enc=null;} TX.on=false;ui.idle();}
+async function txStop(){
+ if(!TX.on||TX.stopping)return; TX.stopping=true;
+ A.node.port.postMessage(false); clearTimeout(TX.tot); clearInterval(TX.tick);
+ if(TX.enc){try{await TX.enc.flush();}catch(e){} try{TX.enc.close();}catch(e){} TX.enc=null;}
+ const ok=await TX.grantP;
+ if(ok){flushPk(true);net.release();sfx.click();
+  logAdd({me:true,n:ME.n,ch:S.ch,t:TX.t0,dur:(Date.now()-TX.t0)/1000,chunks:TX.rec.slice()});}
+ TX.on=false;TX.stopping=false;ui.idle();
+}
+
+/* ---------- 수신 ---------- */
+const RX={cur:null};
+function makeStream(codec,onEnd){
+ const r={codec,next:0,first:0,started:false,ts:0,dec:null};
+ if(codec==='opus'){
+  r.dec=new AudioDecoder({output:ad=>{play(r,adToF32(ad),ad.sampleRate);ad.close();},error:e=>console.warn('dec',e)});
+  r.dec.configure({codec:'opus',sampleRate:48000,numberOfChannels:1});
+ }
+ return r;
+}
+function adToF32(ad){const n=ad.numberOfFrames,f=new Float32Array(n);
+ try{ad.copyTo(f,{planeIndex:0,format:'f32-planar'});return f;}catch(e){}
+ try{if((ad.format||'').startsWith('f32')){if(ad.numberOfChannels===1||ad.format==='f32-planar'){ad.copyTo(f,{planeIndex:0});return f;}}
+  const ch=ad.format==='s16'?ad.numberOfChannels:1,s=new Int16Array(n*ch);ad.copyTo(s,{planeIndex:0});for(let i=0;i<n;i++)f[i]=s[i*ch]/32768;}catch(e){}
+ return f;}
+function feed(r,m){
+ if(!m.d)return; const pk=unpack(b64d(m.d));
+ if(m.c==='opus'){if(!r.dec)return;pk.forEach(p=>{r.dec.decode(new EncodedAudioChunk({type:'key',timestamp:r.ts,data:p}));r.ts+=20000;});}
+ else pk.forEach(p=>{const f=new Float32Array(p.length);for(let i=0;i<p.length;i++)f[i]=ulawDec(p[i]);play(r,f,8000);});
+}
+function play(r,f,sr){
+ if(!f.length||!A.ctx)return;
+ const b=A.ctx.createBuffer(1,f.length,sr);b.copyToChannel(f,0);
+ const s=A.ctx.createBufferSource();s.buffer=b;s.connect(A.out);
+ const now=A.ctx.currentTime;
+ if(r.next<now+.02){r.next=now+(r.started?.15:.3);if(!r.started)r.first=r.next;}   // 지터 버퍼
+ r.started=true;s.start(r.next);r.next+=b.duration;
+}
+async function finishStream(r){if(r.dec){try{await r.dec.flush();}catch(e){}try{r.dec.close();}catch(e){}r.dec=null;}}
+
+function onChunk(m){
+ if(!POWER||m.u===ME.u)return;
+ if(TX.on){return;}                                     // 송신 중엔 수신 무시 (반이중)
+ if(!RX.cur||RX.cur.x!==m.x){ if(RX.cur)rxEnd(); rxBegin(m); }
+ const c=RX.cur; c.lastAt=Date.now(); c.chunks.push(m);
+ if(m.s<=c.seq)return; c.seq=m.s;
+ feed(c.st,m);
+ clearTimeout(c.idle);
+ if(m.e) rxEnd(); else c.idle=setTimeout(rxEnd,2500);
+}
+function rxBegin(m){
+ RX.cur={x:m.x,n:m.n,u:m.u,seq:-1,chunks:[],t0:Date.now(),lastAt:Date.now(),ending:false,st:makeStream(m.c)};
+ sfx.open(); vib(35); ui.rx(m.n);
+}
+async function rxEnd(){
+ const c=RX.cur; if(!c||c.ending)return; c.ending=true; clearTimeout(c.idle);
+ await finishStream(c.st);
+ const now=A.ctx.currentTime, t=Math.max(c.st.next,now);
+ sfx.roger(t); sfx.tail(t+.19);
+ const dur=c.st.started?Math.max(0,c.st.next-c.st.first):0;
+ logAdd({me:false,n:c.n,ch:S.ch,t:c.t0,dur,chunks:c.chunks});
+ setTimeout(()=>{if(RX.cur===c){RX.cur=null;if(!TX.on)ui.idle();}},(t-now+.45)*1000);
+}
+function onLockChange(l){
+ LOCK=l;
+ if(l&&l.u!==ME.u){ if(!RX.cur&&!TX.on) ui.rx(l.n); }
+ else if(!l){ if(RX.cur&&!RX.cur.ending) setTimeout(()=>{if(RX.cur&&!RX.cur.ending&&Date.now()-RX.cur.lastAt>500)rxEnd();},900);
+  else if(!RX.cur&&!TX.on) ui.idle(); }
+}
+
+/* ---------- 기록 / 다시듣기 ---------- */
+const LOG=[];
+function logAdd(e){if(e.dur<0.15&&!e.chunks.some(c=>c.d))return;LOG.unshift(e);if(LOG.length>30)LOG.pop();}
+async function replay(i){
+ const e=LOG[i]; if(!e||TX.on||RX.cur){toast('채널 사용 중에는 재생 불가');return;}
+ const r=makeStream(e.chunks[0]?e.chunks[0].c:'opus'); e.chunks.forEach(m=>feed(r,m)); await finishStream(r);
+ if(r.started)sfx.roger(r.next);
+}
+function renderLog(){
+ $('#logCount').textContent=LOG.length+'건';
+ $('#logList').innerHTML=LOG.length?LOG.map((e,i)=>`<li><b>CH${pad2(e.ch)}</b><span>${hhmmss(e.t)} · <span class="${e.me?'me':''}">${e.me?'▶ 나':'◀ '+esc(e.n)}</span> · ${e.dur.toFixed(1)}초</span><button data-i="${i}">재생</button></li>`).join(''):'<li><span>아직 교신 기록이 없습니다.</span></li>';
+}
+function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+/* ---------- 통신: Firebase 중계 ---------- */
+async function makeFirebase(cfg){
+ const appM=await import(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-app.js`);
+ const D=await import(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-database.js`);
+ const app=appM.getApps().find(a=>a.name==='kcjr')||appM.initializeApp(cfg,'kcjr');
+ const db=D.getDatabase(app);
+ let off=0; D.onValue(D.ref(db,'.info/serverTimeOffset'),s=>off=s.val()||0);
+ const now=()=>Date.now()+off;
+ let base=null,subs=[],lockRef=null,sent=[];
+ const T={mode:'LTE',onConn:null,onLock:null,onUsers:null,onChunk:null,
+  async join(g,ch,me){
+   base=`radio/${g}/ch${ch}`; const b=base;
+   const uref=D.ref(db,`${b}/users/${me.u}`);
+   D.onDisconnect(uref).remove(); D.set(uref,{n:me.n,t:D.serverTimestamp()});
+   subs.push(D.onValue(D.ref(db,`${b}/users`),s=>T.onUsers&&T.onUsers(s.val()||{})));
+   lockRef=D.ref(db,`${b}/lock`);
+   subs.push(D.onValue(lockRef,s=>T.onLock&&T.onLock(s.val())));
+   const cref=D.ref(db,`${b}/chunks`);
+   subs.push(D.onChildAdded(D.query(cref,D.orderByChild('t'),D.startAt(now()-1500)),s=>{const v=s.val();if(v&&T.onChunk)T.onChunk(v);}));
+   D.get(D.query(cref,D.orderByChild('t'),D.endAt(now()-60000))).then(s=>{const u={};s.forEach(c=>{u[c.key]=null;});if(Object.keys(u).length)D.update(cref,u);}).catch(()=>{});
+  },
+  async leave(){subs.forEach(f=>f());subs=[];if(base){const uref=D.ref(db,`${base}/users/${ME.u}`);D.onDisconnect(uref).cancel();D.remove(uref).catch(()=>{});}base=null;},
+  async acquire(){const lr=lockRef;try{
+    const r=await D.runTransaction(lr,cur=>{if(!cur||cur.u===ME.u||now()-cur.t>(TOT_SEC+10)*1000)return{u:ME.u,n:ME.n,t:now()};return;},{applyLocally:false});
+    const v=r.snapshot.val(); if(r.committed&&v&&v.u===ME.u&&lr===lockRef){D.onDisconnect(lr).remove();return true;}
+   }catch(e){console.warn(e);} return false;},
+  release(){const lr=lockRef;D.runTransaction(lr,cur=>(cur&&cur.u===ME.u)?null:cur).catch(()=>{});D.onDisconnect(lr).cancel();},
+  send(m){const cref=D.ref(db,`${base}/chunks`);const k=D.push(cref).key;
+   D.set(D.ref(db,`${base}/chunks/${k}`),Object.assign({},m,{u:ME.u,n:ME.n,t:D.serverTimestamp()}));
+   sent.push([base,k]);
+   if(m.e){const ks=sent;sent=[];setTimeout(()=>{const by={};ks.forEach(([b,k])=>{(by[b]=by[b]||{})[k]=null;});for(const b in by)D.update(D.ref(db,`${b}/chunks`),by[b]).catch(()=>{});},20000);}  // 20초 후 서버에서 음성 삭제
+  }};
+ D.onValue(D.ref(db,'.info/connected'),s=>T.onConn&&T.onConn(!!s.val()));
+ return T;
+}
+/* ---------- 통신: 데모 (같은 기기 탭끼리) ---------- */
+function makeDemo(){
+ let bc=null,hb=0,peers={},lk='';
+ const readLock=()=>{try{return JSON.parse(localStorage.getItem(lk));}catch(e){return null;}};
+ const T={mode:'DEMO',onConn:null,onLock:null,onUsers:null,onChunk:null,
+  async join(g,ch,me){const key=`kcjr-demo-${g}-${ch}`;lk=key+'-lock';bc=new BroadcastChannel(key);peers={};peers[me.u]={n:me.n,t:Date.now()};
+   bc.onmessage=e=>{const d=e.data;if(d.k==='hb'){peers[d.u]={n:d.n,t:Date.now()};T.onUsers&&T.onUsers(peers);}
+    else if(d.k==='bye'){delete peers[d.u];T.onUsers&&T.onUsers(peers);}
+    else if(d.k==='lock'){T.onLock&&T.onLock(readLock());}
+    else if(d.k==='c'){T.onChunk&&T.onChunk(d.m);}};
+   const beat=()=>{if(!bc)return;bc.postMessage({k:'hb',u:me.u,n:me.n});const t=Date.now();for(const u in peers)if(u!==me.u&&t-peers[u].t>8000)delete peers[u];peers[me.u].t=t;T.onUsers&&T.onUsers(peers);};
+   beat();hb=setInterval(beat,3000);T.onLock&&T.onLock(readLock());setTimeout(()=>T.onConn&&T.onConn(true),0);},
+  async leave(){if(bc){bc.postMessage({k:'bye',u:ME.u});bc.close();bc=null;}clearInterval(hb);},
+  async acquire(){const l=readLock();if(l&&l.u!==ME.u&&Date.now()-l.t<(TOT_SEC+10)*1000)return false;
+   localStorage.setItem(lk,JSON.stringify({u:ME.u,n:ME.n,t:Date.now()}));await new Promise(r=>setTimeout(r,80));
+   const c=readLock();const ok=!!(c&&c.u===ME.u);if(ok){bc&&bc.postMessage({k:'lock'});T.onLock&&T.onLock(c);}return ok;},
+  release(){const l=readLock();if(l&&l.u===ME.u){localStorage.removeItem(lk);bc&&bc.postMessage({k:'lock'});T.onLock&&T.onLock(null);}},
+  send(m){bc&&bc.postMessage({k:'c',m:Object.assign({},m,{u:ME.u,n:ME.n,t:Date.now()})});}};
+ return T;
+}
+
+/* ---------- 연결 / 채널 ---------- */
+let joinT=0;
+async function connect(){
+ const cfg=activeCfg();
+ try{ net=cfg?await makeFirebase(cfg):makeDemo(); }
+ catch(e){console.error(e);toast('서버 연결 실패 → 데모 모드');net=makeDemo();}
+ net.onConn=c=>{CONNECTED=c;ui.sig();if(!TX.on&&!RX.cur)ui.idle();};
+ net.onUsers=u=>{$('#users').textContent='접속 '+Object.keys(u).length;};
+ net.onLock=onLockChange; net.onChunk=onChunk;
+ await net.join(cleanGroup(S.group),S.ch,ME);
+}
+function setChannel(ch){
+ if(TX.on){toast('송신 중에는 채널 변경 불가');return;}
+ ch=((ch-1+CH_MAX)%CH_MAX)+1; if(ch===S.ch)return;
+ S.ch=ch;LS.set('ch',ch);sfx.click();vib(10);ui.ch();
+ if(RX.cur){RX.cur.ending=true;RX.cur=null;}
+ LOCK=null;ui.idle();
+ clearTimeout(joinT);joinT=setTimeout(async()=>{if(!net)return;await net.leave();await net.join(cleanGroup(S.group),S.ch,ME);},350);
+}
+async function powerOn(){
+ try{await initAudio();}catch(e){console.error(e);toast('마이크 권한이 필요합니다');return;}
+ POWER=true; $('#power').classList.remove('show'); $('#lcd').classList.remove('dim');
+ sfx.tone(880,sfx.now(),.08,.12);sfx.tone(1320,sfx.now()+.1,.1,.12);
+ ui.ch(); ui.status('연결 중…');
+ await connect(); wake(); ui.sig();
+}
+
+/* ---------- 화면 ---------- */
+const ui={
+ ch(){$('#chBig').innerHTML='<span>CH</span>'+pad2(S.ch);
+  const nm=CH_NAMES[S.ch]?' ['+CH_NAMES[S.ch]+']':'';
+  $('#who').textContent='그룹 '+(cleanGroup(S.group)||'----')+nm+' · '+(ME.n||'----');
+  $('#knobMark').parentElement.style.transform='rotate('+((S.ch-1)*(300/(CH_MAX-1))-150)+'deg)';},
+ status(t,inv){const s=$('#status');s.textContent=t;s.classList.toggle('inv',!!inv);},
+ led(c){$('#led').className=c||'';},
+ idle(){if(!POWER)return;$('#ptt').className='';
+  if(!CONNECTED){ui.led('off');ui.status('연결 끊김 · 재접속 중');return;}
+  ui.led('');ui.status((net&&net.mode==='DEMO')?'대기 (데모 모드)':'대기');},
+ tx(){$('#ptt').className='tx';ui.led('tx');ui.status('▶ 송신 00:00',true);},
+ txTime(){const s=Math.floor((Date.now()-TX.t0)/1000);ui.status('▶ 송신 '+pad2(Math.floor(s/60))+':'+pad2(s%60)+(TX.granted?'':' …'),true);},
+ rx(n){$('#ptt').className='busy';ui.led('rx');ui.status('◀ 수신  '+(n||''),true);},
+ busyFlash(){const p=$('#ptt');p.classList.add('busy');setTimeout(()=>{if(!RX.cur&&!TX.on)p.classList.remove('busy');},600);},
+ sig(){const c=navigator.connection;let lv=CONNECTED?4:0,lbl=CONNECTED?'LTE':'NO SIG';
+  if(CONNECTED&&c&&c.effectiveType){lv={'slow-2g':1,'2g':1,'3g':2,'4g':4}[c.effectiveType]||4;if(c.type==='wifi')lbl='WIFI';}
+  if(net&&net.mode==='DEMO')lbl='DEMO';
+  [...$('#sig').children].forEach((b,i)=>b.classList.toggle('on',i<lv));$('#net').textContent=lbl;}
+};
+(function meter(){const m=$('#meter');for(let i=0;i<20;i++)m.appendChild(document.createElement('i'));const bars=[...m.children];const buf=new Uint8Array(256);
+ (function loop(){let lv=0;if(TX.on)lv=TX.level;else if(RX.cur&&A.an){A.an.getByteTimeDomainData(buf);let s=0;for(let i=0;i<buf.length;i++){const v=(buf[i]-128)/128;s+=v*v;}lv=Math.min(1,Math.sqrt(s/buf.length)*6);}
+  const n=Math.round(lv*20);bars.forEach((b,i)=>b.classList.toggle('on',i<n));requestAnimationFrame(loop);})();})();
+if(navigator.getBattery)navigator.getBattery().then(b=>{const f=()=>$('#bat').textContent='BAT '+Math.round(b.level*100)+'%';f();b.addEventListener('levelchange',f);});
+if(navigator.connection)navigator.connection.addEventListener('change',()=>ui.sig());
+let wl=null; async function wake(){try{if('wakeLock' in navigator)wl=await navigator.wakeLock.request('screen');}catch(e){}}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&POWER){wake();A.ctx&&A.ctx.resume();}});
+
+/* ---------- 조작 ---------- */
+const ptt=$('#ptt');
+ptt.addEventListener('pointerdown',e=>{e.preventDefault();try{ptt.setPointerCapture(e.pointerId);}catch(_){}txStart();});
+['pointerup','pointercancel','lostpointercapture'].forEach(ev=>ptt.addEventListener(ev,()=>txStop()));
+ptt.addEventListener('contextmenu',e=>e.preventDefault());
+let spaceDown=false;
+addEventListener('keydown',e=>{if(e.code==='Space'&&!spaceDown&&!document.querySelector('.sheet.show')){spaceDown=true;e.preventDefault();txStart();}});
+addEventListener('keyup',e=>{if(e.code==='Space'){spaceDown=false;txStop();}});
+$('#chUp').onclick=()=>setChannel(S.ch+1);
+$('#chDn').onclick=()=>setChannel(S.ch-1);
+// 채널 다이얼: 돌리면 변경, 톡 치면 +1
+(function(){const k=$('#knob');let a0=null,acc=0,moved=false;
+ const ang=e=>{const r=k.getBoundingClientRect();return Math.atan2(e.clientY-(r.top+r.height/2),e.clientX-(r.left+r.width/2))*180/Math.PI;};
+ k.addEventListener('pointerdown',e=>{k.setPointerCapture(e.pointerId);a0=ang(e);acc=0;moved=false;});
+ k.addEventListener('pointermove',e=>{if(a0===null)return;const a=ang(e);let d=a-a0;if(d>180)d-=360;if(d<-180)d+=360;a0=a;acc+=d;
+  if(Math.abs(acc)>=22){moved=true;setChannel(S.ch+(acc>0?1:-1));acc=0;}});
+ k.addEventListener('pointerup',()=>{if(a0!==null&&!moved)setChannel(S.ch+1);a0=null;});
+})();
+function openSheet(id){document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('show'));$(id).classList.add('show');}
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('.sheet').classList.remove('show'));
+$('#bLog').onclick=()=>{renderLog();openSheet('#logSheet');};
+$('#logList').onclick=e=>{const b=e.target.closest('button[data-i]');if(b)replay(+b.dataset.i);};
+function inviteUrl(){const u=new URL(location.href.split('?')[0]);u.searchParams.set('g',cleanGroup(S.group));u.searchParams.set('ch',S.ch);
+ if(!EMBED_CFG&&S.cfg)u.searchParams.set('cfg',btoa(unescape(encodeURIComponent(JSON.stringify(S.cfg)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''));return u.toString();}
+$('#bInv').onclick=()=>{const url=inviteUrl();$('#inviteUrl').textContent=url;
+ try{const q=qrcode(0,'M');q.addData(url);q.make();$('#qr').innerHTML=q.createSvgTag({cellSize:4,margin:2,scalable:true});}catch(e){$('#qr').textContent='QR 생성 불가 (오프라인)';}
+ openSheet('#invSheet');};
+$('#shareBtn').onclick=async()=>{const url=inviteUrl();try{if(navigator.share)await navigator.share({title:'KCJ 현장무전기',text:'그룹 '+cleanGroup(S.group)+' CH'+pad2(S.ch),url});else{await navigator.clipboard.writeText(url);toast('링크 복사됨');}}catch(e){}};
+function fillSet(){$('#fName').value=S.name;$('#fGroup').value=S.group;$('#fCh').innerHTML=Array.from({length:CH_MAX},(_,i)=>`<option value="${i+1}">CH ${pad2(i+1)}${CH_NAMES[i+1]?' · '+CH_NAMES[i+1]:''}</option>`).join('');
+ $('#fCh').value=S.ch;$('#fCfg').value=S.cfg?JSON.stringify(S.cfg,null,1):'';if(EMBED_CFG)$('#cfgBox').style.display='none';}
+$('#bSet').onclick=()=>{if(TX.on)return;fillSet();openSheet('#setSheet');};
+$('#closeSet').onclick=()=>{if(!S.name||!cleanGroup(S.group)){toast('호출명과 그룹코드를 입력하세요');return;}$('#setSheet').classList.remove('show');};
+$('#saveBtn').onclick=async()=>{
+ const name=$('#fName').value.trim(),group=cleanGroup($('#fGroup').value),ch=+$('#fCh').value,cfgT=$('#fCfg').value;
+ if(!name||!group){toast('호출명과 그룹코드를 입력하세요');return;}
+ const cfg=parseCfg(cfgT); if(cfg===false){toast('Firebase 설정값을 확인하세요 (apiKey, databaseURL 필요)');return;}
+ const changed=!net||group!==cleanGroup(S.group)||JSON.stringify(cfg)!==JSON.stringify(S.cfg)||name!==S.name;
+ Object.assign(S,{name,group,ch,cfg});ME.n=name;LS.set('name',name);LS.set('group',group);LS.set('ch',ch);LS.set('cfg',cfg);
+ $('#setSheet').classList.remove('show');
+ if(!POWER){await powerOn();return;}
+ ui.ch(); if(changed){if(net)await net.leave();await connect();ui.sig();ui.idle();} else {await net.leave();await net.join(cleanGroup(S.group),S.ch,ME);}
+};
+$('#powerBtn').onclick=powerOn;
+
+/* ---------- 시작 ---------- */
+ui.ch();
+if(!S.name||!cleanGroup(S.group)){fillSet();openSheet('#setSheet');}
+else $('#power').classList.add('show');
+</script>
+</body>
+</html>
