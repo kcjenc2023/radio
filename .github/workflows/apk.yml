@@ -28,6 +28,8 @@ jobs:
       - name: 안드로이드 프로젝트 준비
         env:
           VERSION_CODE: ${{ github.run_number }}
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
         run: |
           mkdir build && cd build
           unzip -q ../apk-src.zip
@@ -36,6 +38,8 @@ jobs:
           python3 patch.py
 
       - name: APK 빌드
+        env:
+          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
         run: |
           cd build/android
           chmod +x gradlew
