@@ -121,6 +121,15 @@ button,.btn,.keys,.alist label,#knob,.vol{-webkit-user-select:none!important;use
 .chips button.on{background:#f5a623!important;color:#0b1322!important}
 .alst li.col{flex-direction:column;align-items:stretch}
 .alst li .row2{display:flex;align-items:center;gap:8px}
+.usage{background:#0b1322;border:1px solid #24344f;border-radius:12px;padding:12px;font-size:13px;line-height:1.7;color:#cfd8e6}
+.usage b{color:#ffbf47}
+.usage .bar{height:10px;border-radius:5px;background:#24344f;overflow:hidden;margin:4px 0 2px}
+.usage .bar i{display:block;height:100%;background:#f5a623}
+.usage .bar i.warn{background:#d4352b}
+.usage table{width:100%;border-collapse:collapse;margin-top:6px;font-size:12px}
+.usage td,.usage th{padding:3px 2px;text-align:right;border-bottom:1px solid #1f2c45}
+.usage td:first-child,.usage th:first-child{text-align:left}
+.usage small{color:#7d8ba3}
 #toast{position:fixed;left:50%;top:18px;transform:translateX(-50%);background:#f5a623;color:#0b1322;font-weight:800;padding:10px 18px;border-radius:20px;z-index:30;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
 #toast.show{opacity:1}
 .mode{font-size:11px;padding:2px 6px;border-radius:4px;background:#2a1800;color:#ffbf47}
@@ -197,6 +206,8 @@ button,.btn,.keys,.alist label,#knob,.vol{-webkit-user-select:none!important;use
 
 <div class="sheet" id="admSheet"><div class="panel">
   <h2>관리자 메뉴</h2>
+  <label>사용량 <span class="mode">추정치</span></label>
+  <div id="admUsage" class="usage"></div>
   <label>승인 대기 <span class="mode" id="admPendN">0</span></label>
   <ul class="alst" id="admPend"></ul>
   <label>사용자 · 그룹 배정 <span class="mode" id="admApprN">0</span></label>
@@ -368,7 +379,7 @@ function addPacket(u8){TX.pk.push(u8); if(TX.pk.length>=10) flushPk(false);}   /
 function flushPk(fin){
  if(!TX.pk.length&&!fin)return;
  const m={x:TX.id,s:TX.seq++,c:A.codec}; if(TX.pk.length)m.d=b64e(pack(TX.pk)); TX.pk=[]; if(fin)m.e=1;
- TX.rec.push(m); if(TX.granted) net.send(m); else TX.pending.push(m);
+ TX.rec.push(m); TX.bytes=(TX.bytes||0)+(m.d?m.d.length:0)+60; if(TX.granted) net.send(m); else TX.pending.push(m);
 }
 function channelBusy(){return (LOCK&&LOCK.u!==ME.u)||(RX.cur&&!RX.cur.ending);}
 function txStart(){
@@ -376,7 +387,7 @@ function txStart(){
  if(!JOINED){sfx.busy();toast(PENDING?'관리자 승인 후 사용할 수 있습니다':'사용할 수 없는 상태입니다');return;}
  if(!CONNECTED){sfx.busy();toast('서버 연결 안 됨');return;}
  if(channelBusy()){sfx.busy();vib([60,40,60]);toast('채널 사용중');ui.busyFlash();return;}
- Object.assign(TX,{on:true,stopping:false,granted:false,pending:[],rec:[],pk:[],seq:0,ts:0,level:0,id:uid.slice(0,6)+Date.now().toString(36),t0:Date.now()});
+ Object.assign(TX,{bytes:0,on:true,stopping:false,granted:false,pending:[],rec:[],pk:[],seq:0,ts:0,level:0,id:uid.slice(0,6)+Date.now().toString(36),t0:Date.now()});
  if(A.codec==='opus'){TX.enc=new AudioEncoder({output:c=>{const u=new Uint8Array(c.byteLength);c.copyTo(u);addPacket(u);},error:e=>console.warn('enc',e)});TX.enc.configure(ENC_CFG);}
  A.node.port.postMessage(true); ui.tx(); vib(25);
  TX.grantP=net.acquire().then(ok=>{
@@ -394,6 +405,7 @@ async function txStop(){
  if(TX.enc){try{await TX.enc.flush();}catch(e){} try{TX.enc.close();}catch(e){} TX.enc=null;}
  const ok=await TX.grantP;
  if(ok){flushPk(true);net.release();sfx.click();
+  {const rcv=Math.max(1,USERS-1),sec=(Date.now()-TX.t0)/1000;try{net.stat({tx:1,sec,kb:TX.bytes/1024,dl:TX.bytes*rcv/1024});}catch(e){}}   // 사용량 기록(추정)
   const e={me:true,n:ME.n,ch:S.ch,t:TX.t0,dur:(Date.now()-TX.t0)/1000,chunks:TX.rec.slice(),acks:ACKW.names};
   ACKW.entry=e; logAdd(e);}
  TX.on=false;TX.stopping=false;ui.idle();
@@ -515,11 +527,12 @@ async function makeFirebase(cfg){
    lockRef=D.ref(db,`${b}/lock`);
    subs.push(D.onValue(lockRef,s=>T.onLock&&T.onLock(s.val())));
    subs.push(listenChunks(ch));
+   const oref=D.ref(db,`online/${me.u}`);D.onDisconnect(oref).remove();D.set(oref,{g,ch,n:me.n,t:D.serverTimestamp()}).catch(()=>{});   // 관리자 사용량 화면용
    if(ch!==1) subs.push(listenChunks(1));                       // 본부(전체) 채널 항상 수신
    subs.push(D.onChildAdded(D.query(D.ref(db,`${gbase}/ch1/alerts`),D.orderByChild('t'),D.startAt(now()-30000)),s=>{const v=s.val();if(v&&T.onAlert)T.onAlert(s.key,v);}));
    sweep(`${b}/chunks`,60000); sweep(`${gbase}/ch1/alerts`,600000);
   },
-  async leave(){subs.forEach(f=>f());subs=[];if(base){const uref=D.ref(db,`${base}/users/${ME.u}`);D.onDisconnect(uref).cancel();D.remove(uref).catch(()=>{});}base=null;},
+  async leave(){subs.forEach(f=>f());subs=[];D.remove(D.ref(db,`online/${ME.u}`)).catch(()=>{});if(base){const uref=D.ref(db,`${base}/users/${ME.u}`);D.onDisconnect(uref).cancel();D.remove(uref).catch(()=>{});}base=null;},
   async acquire(){const lr=lockRef;try{
     const r=await D.runTransaction(lr,cur=>{if(!cur||cur.u===ME.u||now()-cur.t>(TOT_SEC+10)*1000)return{u:ME.u,n:ME.n,t:now()};return;},{applyLocally:false});
     const v=r.snapshot.val(); if(r.committed&&v&&v.u===ME.u&&lr===lockRef){D.onDisconnect(lr).remove();return true;}
@@ -530,6 +543,12 @@ async function makeFirebase(cfg){
    sent.push([base,k]);
    if(m.e){const ks=sent;sent=[];setTimeout(()=>{const by={};ks.forEach(([b,k])=>{(by[b]=by[b]||{})[k]=null;});for(const b in by)D.update(D.ref(db,`${b}/chunks`),by[b]).catch(()=>{});},20000);}  // 20초 후 서버에서 음성 삭제
   },
+  stat(add){const d=new Date(Date.now()+off+9*3600e3).toISOString().slice(0,10).replace(/-/g,'');   // 한국 날짜
+   D.runTransaction(D.ref(db,`stats/${d}`),cur=>{cur=cur||{};for(const k in add)cur[k]=Math.round(((cur[k]||0)+add[k])*10)/10;return cur;}).catch(()=>{});},
+  watchUsage(cb){const st={online:{},stats:{}};
+   const o1=D.onValue(D.ref(db,'online'),s=>{st.online=s.val()||{};cb(st);},()=>{});
+   const o2=D.onValue(D.query(D.ref(db,'stats'),D.orderByKey(),D.limitToLast(7)),s=>{st.stats=s.val()||{};cb(st);},()=>{});
+   return ()=>{o1();o2();};},
   ack(ch,id){D.set(D.ref(db,`${gbase}/ch${ch}/acks/${id}/${ME.u}`),ME.n).catch(()=>{});},
   watchAcks(ch,id,cb){const p=`${gbase}/ch${ch}/acks/${id}`;const offv=D.onValue(D.ref(db,p),s=>cb(s.val()||{}));
    return ()=>{offv();D.get(D.ref(db,p)).then(s=>{const u={};s.forEach(c=>{u[c.key]=null;});if(Object.keys(u).length)D.update(D.ref(db,p),u);}).catch(()=>{});};},
@@ -591,6 +610,7 @@ function makeDemo(){
   send(m){bc&&bc.postMessage({k:'c',ch:myCh,m:Object.assign({},m,{u:ME.u,n:ME.n,t:Date.now()})});},
   ack(ch,id){bc&&bc.postMessage({k:'ack',ch,id,u:ME.u,n:ME.n});},
   watchAcks(ch,id,cb){const key=ch+'/'+id;ackW[key]={v:{},cb};return ()=>{delete ackW[key];};},
+  stat(){},watchUsage(){return ()=>{};},
   sendAlert(a){const key='a'+Date.now().toString(36);bc&&bc.postMessage({k:'alert',key,a:Object.assign({},a,{u:ME.u,n:ME.n,t:Date.now()})});return key;}};
  return T;
 }
@@ -710,7 +730,7 @@ $('#emgPreset').onchange=()=>{$('#emgMsg').style.display=$('#emgPreset').value==
 function sendEmergency(){
  const wait=15000-(Date.now()-(sendEmergency.last||0)); if(wait>0){toast(Math.ceil(wait/1000)+'초 후 다시 보낼 수 있습니다');return;} sendEmergency.last=Date.now();
  let m=$('#emgPreset').value; if(m==='직접 입력')m=($('#emgMsg').value||'').trim().slice(0,30)||'긴급 호출';
- const key=net.sendAlert({s:EMG_SND,m});
+ const key=net.sendAlert({s:EMG_SND,m}); try{net.stat({alert:1});}catch(e){}
  vib(200); sfx.permit();
  const e={alert:true,me:true,n:ME.n,msg:m,t:Date.now(),dur:0,chunks:[],ch:1,acks:[]}; logAdd(e);
  if(EMG_OFF)EMG_OFF();
@@ -764,8 +784,28 @@ $('#fGroup').addEventListener('input',()=>{const f=$('#fGroup'),v=f.value;
   else{f.value='';toast('초대 문구에서 그룹코드를 찾지 못했습니다');}}});
 $('#fGroupEye').onclick=()=>{const f=$('#fGroup');f.type=f.type==='password'?'text':'password';$('#fGroupEye').textContent=f.type==='password'?'보기':'숨김';};
 let ADM={pending:{},approved:{},allowed:{}},ADM_PN=-1;
+let USAGE={online:{},stats:{}},USAGE_OFF=null;
+const DAY_LIMIT_MB=360;   // Firebase 무료 요금제 하루 전송 한도(약 10GB/월)
+function renderUsage(){
+ const el=$('#admUsage');if(!el)return;
+ const on=Object.values(USAGE.online||{}),byG={};on.forEach(o=>{byG[o.g]=(byG[o.g]||0)+1;});
+ const days=Object.keys(USAGE.stats||{}).sort().reverse();
+ const kst=new Date(Date.now()+9*3600e3).toISOString().slice(0,10).replace(/-/g,'');
+ const t=(USAGE.stats||{})[kst]||{};
+ const mb=((t.dl||0)+(t.kb||0))/1024,pct=Math.min(100,mb/DAY_LIMIT_MB*100);
+ const fmtD=d=>d.slice(4,6)+'/'+d.slice(6,8);
+ el.innerHTML=`지금 접속 <b>${on.length}명</b> <small>(무료 한도 동시 100명)</small><br>
+  ${Object.keys(byG).map(g=>`· ${esc(gName(g)||maskCode(g))} ${byG[g]}명`).join('<br>')||'<small>접속자 없음</small>'}<br>
+  오늘 송신 <b>${t.tx||0}회</b> · <b>${((t.sec||0)/60).toFixed(1)}분</b> · 긴급 ${t.alert||0}회<br>
+  오늘 데이터 약 <b>${mb.toFixed(1)}MB</b> / ${DAY_LIMIT_MB}MB
+  <div class="bar"><i class="${pct>70?'warn':''}" style="width:${pct.toFixed(1)}%"></i></div>
+  <small>${pct.toFixed(1)}% 사용 · 정확한 값은 Firebase 콘솔 → Realtime Database → 사용량</small>
+  ${days.length?`<table><tr><th>날짜</th><th>송신</th><th>분</th><th>MB</th></tr>${days.map(d=>{const x=USAGE.stats[d];return `<tr><td>${fmtD(d)}</td><td>${x.tx||0}</td><td>${((x.sec||0)/60).toFixed(1)}</td><td>${(((x.dl||0)+(x.kb||0))/1024).toFixed(1)}</td></tr>`;}).join('')}</table>`:''}`;
+}
 function startAdmin(){
  renderMyId();
+ if(USAGE_OFF)USAGE_OFF();
+ USAGE_OFF=net.watchUsage(u=>{USAGE=u;if($('#admSheet').classList.contains('show'))renderUsage();});
  if(ADMIN_OFF)ADMIN_OFF();
  ADMIN_OFF=net.watchAdmin(st=>{ADM=st;
   let n=0;for(const g in st.pending)n+=Object.keys(st.pending[g]||{}).length;
@@ -788,7 +828,7 @@ function renderAdmin(){
    <div class="chips">${G.map(c=>`<button class="${ADM.members[c]&&ADM.members[c][u]?'on':''}" data-mb="${esc(c)}|${esc(u)}">${esc(gName(c)||c)}</button>`).join('')}</div></li>`).join(''):'<li class="empty">승인된 사용자가 없습니다.</li>';
  $('#admGroups').innerHTML=G.length?G.map(c=>{const m=Object.keys(ADM.members[c]||{}).length;return `<li><span><b>${esc(gName(c)||'(이름 없음)')}</b>${c===cleanGroup(S.group)?' <small>(사용 중)</small>':''}<br><small>코드 ${esc(c)} · ${m}명</small></span><button data-gn="${esc(c)}">이름</button><button class="no" data-dg="${esc(c)}">삭제</button></li>`;}).join(''):'<li class="empty">그룹이 없습니다.</li>';
 }
-$('#admOpen').onclick=()=>{renderAdmin();openSheet('#admSheet');};
+$('#admOpen').onclick=()=>{renderAdmin();renderUsage();openSheet('#admSheet');};
 $('#admSheet').addEventListener('click',async e=>{
  const b=e.target.closest('button');if(!b)return;
  try{
