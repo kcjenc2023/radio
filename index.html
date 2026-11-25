@@ -179,6 +179,7 @@ button,.btn,.keys,.alist label,#knob,.vol{-webkit-user-select:none!important;use
   <div class="hint">카톡으로 받은 <b>초대 문구 전체를 길게 눌러 복사 → 여기에 붙여넣기</b> 하면 그룹코드가 자동으로 들어갑니다.</div>
   <label>채널</label>
   <select id="fCh"></select>
+  <div class="hint">CH01(공지)에서 말하면 <b>같은 그룹</b>의 모든 채널에 들립니다. 다른 그룹에는 들리지 않습니다.</div>
   <details id="cfgBox">
     <summary>서버 설정 (Firebase)</summary>
     <label>Firebase 설정값 붙여넣기</label>
@@ -263,7 +264,7 @@ const EMBED_CFG = {
   appId: "1:39816778211:web:a0b4b716a5669a9f4990d6"
 };
 const CH_MAX = 16, TOT_SEC = 60, FB_VER = '10.12.2';
-const CH_NAMES = {1:'그룹 전체'};   // CH1 = 같은 그룹의 모든 채널이 함께 듣는 방송 채널
+const CH_NAMES = {1:'공지'};   // CH1 = 같은 그룹의 모든 채널이 함께 듣는 방송 채널
 
 const $ = s => document.querySelector(s);
 const LS = {get(k,d){try{const v=localStorage.getItem('kcjr_'+k);return v===null?d:JSON.parse(v);}catch(e){return d;}},set(k,v){try{localStorage.setItem('kcjr_'+k,JSON.stringify(v));}catch(e){}}};
@@ -451,9 +452,9 @@ function onChunk(m,ch){
 function rxBegin(m,ch){
  const all=(ch===1&&S.ch!==1);
  RX.cur={x:m.x,n:m.n,u:m.u,ch,all,seq:-1,chunks:[],t0:Date.now(),lastAt:Date.now(),ending:false,st:makeStream(m.c)};
- sfx.open(); vib(all?[60,40,60]:35); ui.rx((all?'[전체] ':'')+m.n);
+ sfx.open(); vib(all?[60,40,60]:35); ui.rx((all?'[공지] ':'')+m.n);
  try{net.ack(ch,m.x);}catch(e){}                 // 수신 확인 자동 회신
- nativeNotify('◀ '+(all?'[전체] ':'')+m.n);
+ nativeNotify('◀ '+(all?'[공지] ':'')+m.n);
 }
 async function rxEnd(){
  const c=RX.cur; if(!c||c.ending)return; c.ending=true; clearTimeout(c.idle);
@@ -461,7 +462,7 @@ async function rxEnd(){
  const now=A.ctx.currentTime, t=Math.max(c.st.next,now);
  sfx.roger(t); sfx.tail(t+.19);
  const dur=c.st.started?Math.max(0,c.st.next-c.st.first):0;
- logAdd({me:false,n:(c.all?'[전체] ':'')+c.n,ch:c.ch,t:c.t0,dur,chunks:c.chunks});
+ logAdd({me:false,n:(c.all?'[공지] ':'')+c.n,ch:c.ch,t:c.t0,dur,chunks:c.chunks});
  setTimeout(()=>{if(RX.cur===c){RX.cur=null;if(!TX.on)ui.idle();}},(t-now+.45)*1000);
 }
 function onLockChange(l){
