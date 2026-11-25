@@ -538,24 +538,30 @@ async function makeFirebase(cfg){
  const myUid=auth.currentUser.uid;
  let off=0; D.onValue(D.ref(db,'.info/serverTimeOffset'),s=>off=s.val()||0);
  const now=()=>Date.now()+off;
- let base=null,gbase=null,subs=[],lockRef=null,sent=[];
+ let base=null,gbase=null,subs=[],lockRef=null,sent=[],pres=null;
+ /* 접속 표시(presence). 연결이 잠깐 끊겼다 다시 붙으면 서버가 지운 접속 표시를 다시 써야 한다 */
+ function writePresence(first){
+  if(!pres)return;
+  const uref=D.ref(db,`${pres.b}/users/${ME.u}`),oref=D.ref(db,`online/${ME.u}`);
+  D.onDisconnect(uref).remove(); D.set(uref,{n:ME.n,t:D.serverTimestamp()}).catch(e=>{if(first&&String(e).toLowerCase().includes('permission')&&T.onDenied)T.onDenied();});
+  D.onDisconnect(oref).remove(); D.set(oref,{g:pres.g,ch:pres.ch,n:ME.n,t:D.serverTimestamp()}).catch(()=>{});
+ }
  const sweep=(path,age)=>{const r=D.ref(db,path);D.get(D.query(r,D.orderByChild('t'),D.endAt(now()-age))).then(s=>{const u={};s.forEach(c=>{u[c.key]=null;});if(Object.keys(u).length)D.update(r,u);}).catch(()=>{});};
  const listenChunks=(ch)=>D.onChildAdded(D.query(D.ref(db,`${gbase}/ch${ch}/chunks`),D.orderByChild('t'),D.startAt(now()-1500)),s=>{const v=s.val();if(v&&T.onChunk)T.onChunk(v,ch);});
  const T={mode:'LTE',uid:myUid,onDenied:null,onConn:null,onLock:null,onUsers:null,onChunk:null,onAlert:null,
   async join(g,ch,me){
    gbase=`radio/${g}`; base=`${gbase}/ch${ch}`; const b=base;
-   const uref=D.ref(db,`${b}/users/${me.u}`);
-   D.onDisconnect(uref).remove(); D.set(uref,{n:me.n,t:D.serverTimestamp()}).catch(e=>{if(String(e).toLowerCase().includes('permission')&&T.onDenied)T.onDenied();});
+   pres={b,g,ch}; writePresence(true);
    subs.push(D.onValue(D.ref(db,`${b}/users`),s=>T.onUsers&&T.onUsers(s.val()||{})));
    lockRef=D.ref(db,`${b}/lock`);
    subs.push(D.onValue(lockRef,s=>T.onLock&&T.onLock(s.val())));
    subs.push(listenChunks(ch));
-   const oref=D.ref(db,`online/${me.u}`);D.onDisconnect(oref).remove();D.set(oref,{g,ch,n:me.n,t:D.serverTimestamp()}).catch(()=>{});   // 관리자 사용량 화면용
    if(ch!==1) subs.push(listenChunks(1));                       // 본부(전체) 채널 항상 수신
    subs.push(D.onChildAdded(D.query(D.ref(db,`${gbase}/ch1/alerts`),D.orderByChild('t'),D.startAt(now()-30000)),s=>{const v=s.val();if(v&&T.onAlert)T.onAlert(s.key,v);}));
    sweep(`${b}/chunks`,60000); sweep(`${gbase}/ch1/alerts`,600000);
   },
-  async leave(){subs.forEach(f=>f());subs=[];D.remove(D.ref(db,`online/${ME.u}`)).catch(()=>{});if(base){const uref=D.ref(db,`${base}/users/${ME.u}`);D.onDisconnect(uref).cancel();D.remove(uref).catch(()=>{});}base=null;},
+  refresh(){writePresence(false);},
+  async leave(){pres=null;subs.forEach(f=>f());subs=[];D.remove(D.ref(db,`online/${ME.u}`)).catch(()=>{});if(base){const uref=D.ref(db,`${base}/users/${ME.u}`);D.onDisconnect(uref).cancel();D.remove(uref).catch(()=>{});}base=null;},
   async acquire(){const lr=lockRef;try{
     const r=await D.runTransaction(lr,cur=>{if(!cur||cur.u===ME.u||now()-cur.t>(TOT_SEC+10)*1000)return{u:ME.u,n:ME.n,t:now()};return;},{applyLocally:false});
     const v=r.snapshot.val(); if(r.committed&&v&&v.u===ME.u&&lr===lockRef){D.onDisconnect(lr).remove();return true;}
@@ -606,7 +612,8 @@ async function makeFirebase(cfg){
   delGroup(c,uids){const up={[`allowed/${c}`]:null,[`groupNames/${c}`]:null,[`members/${c}`]:null};uids.forEach(u=>up[`myGroups/${u}/${c}`]=null);
    Object.keys(ADM.pending[c]||{}).forEach(u=>up[`pending/${c}/${u}`]=null);return D.update(D.ref(db),up);}
  };
- D.onValue(D.ref(db,'.info/connected'),s=>T.onConn&&T.onConn(!!s.val()));
+ let wasOn=null;
+ D.onValue(D.ref(db,'.info/connected'),s=>{const c=!!s.val();if(c&&wasOn===false)writePresence(false);wasOn=c;T.onConn&&T.onConn(c);});   // 재접속 시 접속 표시 복구
  return T;
 }
 /* ---------- 통신: 데모 (같은 기기 탭끼리) ---------- */
@@ -906,7 +913,7 @@ const ui={
 if(navigator.getBattery)navigator.getBattery().then(b=>{const f=()=>$('#bat').textContent='BAT '+Math.round(b.level*100)+'%';f();b.addEventListener('levelchange',f);});
 if(navigator.connection)navigator.connection.addEventListener('change',()=>ui.sig());
 let wl=null; async function wake(){try{if('wakeLock' in navigator)wl=await navigator.wakeLock.request('screen');}catch(e){}}
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&POWER){wake();A.ctx&&A.ctx.resume();}});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&POWER){wake();A.ctx&&A.ctx.resume();if(net&&JOINED&&net.refresh)net.refresh();}});   // 앱으로 돌아오면 접속 표시 다시 확인
 
 /* ---------- 조작 ---------- */
 const ptt=$('#ptt');
