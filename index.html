@@ -632,6 +632,7 @@ function setChannel(ch){
  if(TX.on){toast('송신 중에는 채널 변경 불가');return;}
  ch=((ch-1+CH_MAX)%CH_MAX)+1; if(ch===S.ch)return;
  S.ch=ch;LS.set('ch',ch);sfx.click();vib(10);ui.ch();
+ {const m=chMap();m[cleanGroup(S.group)]=ch;LS.set('chOf',m);}
  if(RX.cur){RX.cur.ending=true;RX.cur=null;}
  LOCK=null;ui.idle();
  clearTimeout(joinT);joinT=setTimeout(async()=>{if(!net||!JOINED)return;await net.leave();await net.join(cleanGroup(S.group),S.ch,ME);},350);
@@ -732,10 +733,26 @@ function renderMyGroups(){
  const box=$('#myGrpBox'),sel=$('#fMyGroups');
  if(!list.length){box.style.display='none';return;}
  box.style.display='block';
- const cur=cleanGroup($('#fGroup').value||S.group);
+ const cur=cleanGroup(S.group), sig=JSON.stringify(list)+cur;
+ if(sel.dataset.sig===sig)return;                 // 목록이 같으면 다시 그리지 않음 (선택 중 되돌아가는 문제 방지)
+ sel.dataset.sig=sig;
  sel.innerHTML='<option value="">— 선택 —</option>'+list.map(g=>`<option value="${esc(g.code)}" ${g.code===cur?'selected':''}>${esc(g.name||maskCode(g.code))}</option>`).join('');
 }
-$('#fMyGroups').onchange=()=>{const v=$('#fMyGroups').value;if(v)$('#fGroup').value=v;};
+/* 그룹을 고르면 바로 전환 (단톡방 고르듯) — 그룹마다 마지막 채널 기억 */
+function chMap(){return LS.get('chOf',{});}
+$('#fMyGroups').onchange=async()=>{
+ const v=$('#fMyGroups').value; if(!v||v===cleanGroup(S.group))return;
+ if(TX.on){toast('송신 중에는 전환할 수 없습니다');return;}
+ const m=chMap(); m[cleanGroup(S.group)]=S.ch; LS.set('chOf',m);
+ S.group=v; S.ch=m[v]||1; LS.set('group',v); LS.set('ch',S.ch);
+ $('#fGroup').value=v; $('#fCh').value=S.ch;
+ $('#setSheet').classList.remove('show');
+ if(RX.cur){RX.cur.ending=true;RX.cur=null;}
+ ui.ch(); ui.status('그룹 전환 중…');
+ if(net&&JOINED)await net.leave(); JOINED=false;
+ await connect(); ui.sig(); ui.idle();
+ const g=MYGROUPS.find(x=>x.code===v)||{}; toast((g.name||(typeof gName==='function'&&gName(v))||'그룹')+' 으로 전환 · CH'+pad2(S.ch));
+};
 /* ---------- 관리자 메뉴 / 내 기기 ID ---------- */
 function renderMyId(){if(net&&net.uid){$('#myIdBox').style.display='block';$('#myId').value=net.uid;}$('#admOpen').style.display=ROLE==='admin'?'block':'none';}
 $('#myIdCopy').onclick=async()=>{try{await navigator.clipboard.writeText($('#myId').value);toast('복사됨');}catch(e){$('#myId').select();}};
