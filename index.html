@@ -195,6 +195,10 @@ button,.btn,.keys,.alist label,#knob,.vol{-webkit-user-select:none!important;use
     <textarea id="fCfg" placeholder='const firebaseConfig = { apiKey: "...", databaseURL: "https://....firebasedatabase.app", projectId: "...", appId: "..." };'></textarea>
     <div class="hint">비워두면 <b>데모 모드</b>로 동작합니다 (같은 폰/PC의 브라우저 탭끼리만 통신, 화면·소리 확인용).</div>
   </details>
+  <div id="hsBox" style="display:none">
+    <label style="display:flex;align-items:center;gap:10px;color:#e8edf5;font-size:15px"><input type="checkbox" id="fHeadset" style="width:22px;height:22px;margin:0"> 블루투스 이어폰 버튼으로 송신</label>
+    <div class="hint">켜면 이어폰 버튼을 한 번 눌러 송신 시작, 다시 눌러 끝. 켜져 있는 동안 음악·동영상 앱의 이어폰 재생/정지 버튼은 동작하지 않습니다.</div>
+  </div>
   <div id="myIdBox" style="display:none">
     <label>내 기기 ID (관리자 등록·문의용)</label>
     <div style="display:flex;gap:8px"><input id="myId" readonly><button type="button" class="mini" id="myIdCopy">복사</button></div>
@@ -323,19 +327,36 @@ async function initAudio(){
  A.lim=A.ctx.createDynamicsCompressor(); A.lim.threshold.value=-10; A.lim.knee.value=10; A.lim.ratio.value=12; A.lim.attack.value=.002; A.lim.release.value=.15;
  A.out.connect(A.lim).connect(A.ctx.destination);   // 증폭 + 찢어짐 방지 리미터
  A.an=A.ctx.createAnalyser(); A.an.fftSize=512; A.out.connect(A.an);
- A.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1}});
+ {const t=await navigator.mediaDevices.getUserMedia({audio:true});t.getTracks().forEach(x=>x.stop());}   // 권한만 확인하고 바로 닫음
  const wl=`class P extends AudioWorkletProcessor{constructor(){super();this.on=false;this.b=new Float32Array(960);this.n=0;this.port.onmessage=e=>{this.on=e.data;this.n=0;};}
  process(i){const c=i[0]&&i[0][0];if(this.on&&c){for(let k=0;k<c.length;k++){this.b[this.n++]=c[k];if(this.n===960){this.port.postMessage(this.b.slice(0));this.n=0;}}}return true;}}registerProcessor('cap',P);`;
  await A.ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([wl],{type:'application/javascript'})));
  A.node=new AudioWorkletNode(A.ctx,'cap');
  const z=A.ctx.createGain(); z.gain.value=0;
- A.ctx.createMediaStreamSource(A.stream).connect(A.node); A.node.connect(z).connect(A.ctx.destination);
+ A.node.connect(z).connect(A.ctx.destination);
  A.node.port.onmessage=e=>onPcm(e.data);
  ENC_CFG={codec:'opus',sampleRate:A.sr,numberOfChannels:1,bitrate:16000};
  if('AudioEncoder' in window&&'AudioDecoder' in window){try{
    const r=await AudioEncoder.isConfigSupported(ENC_CFG);
    const d=await AudioDecoder.isConfigSupported({codec:'opus',sampleRate:48000,numberOfChannels:1});
    if(r.supported&&d.supported)A.codec='opus';}catch(e){}}
+}
+/* 마이크는 송신(PTT)할 때만 연다.
+   항상 열어두면 안드로이드가 '통화 중' 모드로 바뀌어 다른 앱 알림음이 '똑' 소리로 바뀌고
+   볼륨 버튼이 통화 음량을 조절하게 된다. */
+let MIC_T=0;
+async function micOpen(){
+ clearTimeout(MIC_T);
+ if(A.mic)return true;
+ try{
+  const st=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1}});
+  if(A.mic){st.getTracks().forEach(t=>t.stop());return true;}
+  A.mic={st,src:A.ctx.createMediaStreamSource(st)}; A.mic.src.connect(A.node); return true;
+ }catch(e){console.warn('mic',e);toast('마이크를 열 수 없습니다');return false;}
+}
+function micClose(delay){
+ clearTimeout(MIC_T);
+ MIC_T=setTimeout(()=>{if(TX.on||!A.mic)return;try{A.mic.src.disconnect();}catch(e){}A.mic.st.getTracks().forEach(t=>t.stop());A.mic=null;},delay||0);
 }
 const sfx={
  tone(f,t,d,g=.15,type='sine'){if(!A.ctx)return;const o=A.ctx.createOscillator(),v=A.ctx.createGain();o.type=type;o.frequency.value=f;
@@ -390,14 +411,16 @@ function txStart(){
  Object.assign(TX,{bytes:0,on:true,stopping:false,granted:false,pending:[],rec:[],pk:[],seq:0,ts:0,level:0,id:uid.slice(0,6)+Date.now().toString(36),t0:Date.now()});
  if(A.codec==='opus'){TX.enc=new AudioEncoder({output:c=>{const u=new Uint8Array(c.byteLength);c.copyTo(u);addPacket(u);},error:e=>console.warn('enc',e)});TX.enc.configure(ENC_CFG);}
  A.node.port.postMessage(true); ui.tx(); vib(25);
- TX.grantP=net.acquire().then(ok=>{
+ const micP=micOpen();
+ TX.grantP=Promise.all([net.acquire(),micP]).then(([ok,mic])=>{
+  if(ok&&!mic){net.release();ok=false;}
   if(ok){TX.granted=true;sfx.permit();TX.pending.forEach(m=>net.send(m));TX.pending=[];watchTxAcks(S.ch,TX.id);}
   else{sfx.busy();vib([60,40,60]);toast('채널 사용중');if(!TX.stopping)txAbort();}
   return ok;});
  TX.tot=setTimeout(()=>{toast('송신 '+TOT_SEC+'초 제한');txStop();},TOT_SEC*1000);
  TX.tick=setInterval(ui.txTime,250);
 }
-function txAbort(){A.node.port.postMessage(false);clearTimeout(TX.tot);clearInterval(TX.tick);
+function txAbort(){A.node.port.postMessage(false);clearTimeout(TX.tot);clearInterval(TX.tick);micClose(300);
  if(TX.enc){try{TX.enc.close();}catch(e){}TX.enc=null;} TX.on=false;ui.idle();}
 async function txStop(){
  if(!TX.on||TX.stopping)return; TX.stopping=true;
@@ -408,7 +431,7 @@ async function txStop(){
   {const rcv=Math.max(1,USERS-1),sec=(Date.now()-TX.t0)/1000;try{net.stat({tx:1,sec,kb:TX.bytes/1024,dl:TX.bytes*rcv/1024});}catch(e){}}   // 사용량 기록(추정)
   const e={me:true,n:ME.n,ch:S.ch,t:TX.t0,dur:(Date.now()-TX.t0)/1000,chunks:TX.rec.slice(),acks:ACKW.names};
   ACKW.entry=e; logAdd(e);}
- TX.on=false;TX.stopping=false;ui.idle();
+ TX.on=false;TX.stopping=false;ui.idle();micClose(1500);   // 연달아 누를 때를 대비해 1.5초 후 닫음
  if(ok) ui.ackShow();
 }
 /* 수신 확인: 내 송신을 들은 사람 표시 */
@@ -665,7 +688,7 @@ async function powerOn(){
  ui.ch(); ui.status('연결 중…');
  await connect(); wake(); ui.sig();
  nativeCall('start',{});
- if(NATIVE){try{const o=A.ctx.createOscillator(),g=A.ctx.createGain();o.frequency.value=25;g.gain.value=.002;o.connect(g).connect(A.ctx.destination);o.start();}catch(e){}}   // 백그라운드에서 오디오가 멈추지 않게 유지(들리지 않는 저주파)
+ if(NATIVE){setTimeout(()=>nativeCall('headset',{on:!!LS.get('hsPtt',false)}),800);}
 }
 
 /* ---------- 긴급 호출: 경보음 ---------- */
@@ -782,6 +805,8 @@ $('#fGroup').addEventListener('input',()=>{const f=$('#fGroup'),v=f.value;
  if(v.length>24||/그룹코드|g=|KCJ RADIO/.test(v)){const r=extractInvite(v);
   if(r){f.value=r.g;if(r.ch)$('#fCh').value=r.ch;toast('초대 문구에서 그룹코드를 찾았습니다');}
   else{f.value='';toast('초대 문구에서 그룹코드를 찾지 못했습니다');}}});
+if(NATIVE){$('#hsBox').style.display='block';$('#fHeadset').checked=!!LS.get('hsPtt',false);
+ $('#fHeadset').onchange=()=>{const on=$('#fHeadset').checked;LS.set('hsPtt',on);nativeCall('headset',{on});toast(on?'이어폰 버튼 송신 켜짐':'이어폰 버튼 송신 꺼짐');};}
 $('#fGroupEye').onclick=()=>{const f=$('#fGroup');f.type=f.type==='password'?'text':'password';$('#fGroupEye').textContent=f.type==='password'?'보기':'숨김';};
 let ADM={pending:{},approved:{},allowed:{}},ADM_PN=-1;
 let USAGE={online:{},stats:{}},USAGE_OFF=null;
