@@ -286,6 +286,7 @@ const LS = {get(k,d){try{const v=localStorage.getItem('kcjr_'+k);return v===null
 const uid = Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);   // 실행할 때마다 새 ID (탭별 구분)
 const S = {name:LS.get('name',''), group:LS.get('group',''), ch:LS.get('ch',1), cfg:LS.get('cfg',null)};
 const ME = {u:uid, n:S.name};
+let LOST_T=0, HIDDEN_AT=0, LAST_CONN_OK=Date.now(), REJOINING=false;
 let net=null, LOCK=null, CONNECTED=false, POWER=false, USERS=0, DENIED=false, PENDING=false, REVOKED=false, JOINED=false, ROLE='user', APPROVAL_OFF=null, ADMIN_OFF=null, MYG_OFF=null, NAME_OFF=null, MYGROUPS=[];
 
 /* ---------- URL 초대 파라미터 ---------- */
@@ -485,6 +486,7 @@ function onChunk(m,ch){
  if(m.e) rxEnd(); else c.idle=setTimeout(rxEnd,2500);
 }
 function rxBegin(m,ch){
+ if(A.ctx&&A.ctx.state!=='running')A.ctx.resume();
  const all=(ch===1&&S.ch!==1);
  RX.cur={x:m.x,n:m.n,u:m.u,ch,all,seq:-1,chunks:[],t0:Date.now(),lastAt:Date.now(),ending:false,st:makeStream(m.c)};
  sfx.open(); vib(all?[60,40,60]:35); ui.rx((all?'[공지] ':'')+m.n);
@@ -547,20 +549,22 @@ async function makeFirebase(cfg){
   D.onDisconnect(oref).remove(); D.set(oref,{g:pres.g,ch:pres.ch,n:ME.n,t:D.serverTimestamp()}).catch(()=>{});
  }
  const sweep=(path,age)=>{const r=D.ref(db,path);D.get(D.query(r,D.orderByChild('t'),D.endAt(now()-age))).then(s=>{const u={};s.forEach(c=>{u[c.key]=null;});if(Object.keys(u).length)D.update(r,u);}).catch(()=>{});};
- const listenChunks=(ch)=>D.onChildAdded(D.query(D.ref(db,`${gbase}/ch${ch}/chunks`),D.orderByChild('t'),D.startAt(now()-1500)),s=>{const v=s.val();if(v&&T.onChunk)T.onChunk(v,ch);});
+ const lost=e=>{console.warn('listener lost',e);T.onLost&&T.onLost();};
+ const listenChunks=(ch)=>D.onChildAdded(D.query(D.ref(db,`${gbase}/ch${ch}/chunks`),D.orderByChild('t'),D.startAt(now()-1500)),s=>{const v=s.val();if(v&&T.onChunk)T.onChunk(v,ch);},lost);
  const T={mode:'LTE',uid:myUid,onDenied:null,onConn:null,onLock:null,onUsers:null,onChunk:null,onAlert:null,
   async join(g,ch,me){
    gbase=`radio/${g}`; base=`${gbase}/ch${ch}`; const b=base;
    pres={b,g,ch}; writePresence(true);
-   subs.push(D.onValue(D.ref(db,`${b}/users`),s=>T.onUsers&&T.onUsers(s.val()||{})));
+   subs.push(D.onValue(D.ref(db,`${b}/users`),s=>T.onUsers&&T.onUsers(s.val()||{}),lost));
    lockRef=D.ref(db,`${b}/lock`);
-   subs.push(D.onValue(lockRef,s=>T.onLock&&T.onLock(s.val())));
+   subs.push(D.onValue(lockRef,s=>T.onLock&&T.onLock(s.val()),lost));
    subs.push(listenChunks(ch));
    if(ch!==1) subs.push(listenChunks(1));                       // 본부(전체) 채널 항상 수신
    subs.push(D.onChildAdded(D.query(D.ref(db,`${gbase}/ch1/alerts`),D.orderByChild('t'),D.startAt(now()-30000)),s=>{const v=s.val();if(v&&T.onAlert)T.onAlert(s.key,v);}));
    sweep(`${b}/chunks`,60000); sweep(`${gbase}/ch1/alerts`,600000);
   },
   refresh(){writePresence(false);},
+  kick(){try{D.goOffline(db);setTimeout(()=>D.goOnline(db),500);}catch(e){}},   // 연결 강제 재시도
   async leave(){pres=null;subs.forEach(f=>f());subs=[];D.remove(D.ref(db,`online/${ME.u}`)).catch(()=>{});if(base){const uref=D.ref(db,`${base}/users/${ME.u}`);D.onDisconnect(uref).cancel();D.remove(uref).catch(()=>{});}base=null;},
   async acquire(){const lr=lockRef;try{
     const r=await D.runTransaction(lr,cur=>{if(!cur||cur.u===ME.u||now()-cur.t>(TOT_SEC+10)*1000)return{u:ME.u,n:ME.n,t:now()};return;},{applyLocally:false});
@@ -654,6 +658,7 @@ async function connect(){
  net.onConn=c=>{CONNECTED=c;ui.sig();if(!TX.on&&!RX.cur)ui.idle();};
  net.onUsers=u=>{USERS=Object.keys(u).length;$('#users').textContent='접속 '+USERS;};
  net.onAlert=onAlert;
+ net.onLost=()=>{clearTimeout(LOST_T);LOST_T=setTimeout(()=>rejoin('lost'),2000);};
  net.onDenied=()=>{DENIED=true;ui.idle();toast('등록되지 않은 그룹코드입니다');};
  net.onLock=onLockChange; net.onChunk=onChunk;
  DENIED=false;PENDING=false;REVOKED=false;ROLE='user';
@@ -913,7 +918,35 @@ const ui={
 if(navigator.getBattery)navigator.getBattery().then(b=>{const f=()=>$('#bat').textContent='BAT '+Math.round(b.level*100)+'%';f();b.addEventListener('levelchange',f);});
 if(navigator.connection)navigator.connection.addEventListener('change',()=>ui.sig());
 let wl=null; async function wake(){try{if('wakeLock' in navigator)wl=await navigator.wakeLock.request('screen');}catch(e){}}
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&POWER){wake();A.ctx&&A.ctx.resume();if(net&&JOINED&&net.refresh)net.refresh();}});   // 앱으로 돌아오면 접속 표시 다시 확인
+/* ---------- 백그라운드 복구 ----------
+   오래 뒤에 있으면 절전으로 연결·수신 감시가 끊길 수 있다 → 돌아올 때/주기적으로 점검해 다시 연결 */
+async function rejoin(why){
+ if(!net||!JOINED||TX.on||REJOINING||net.mode!=='LTE')return;
+ REJOINING=true;
+ try{await net.leave();await net.join(cleanGroup(S.group),S.ch,ME);}catch(e){console.warn('rejoin',e);}
+ REJOINING=false; console.log('rejoin:',why); ui.idle();
+}
+window.kcjResume=()=>{
+ try{document.body.style.opacity='0.999';requestAnimationFrame(()=>{document.body.style.opacity='';});}catch(e){}   // 흰 화면 방지: 다시 그리기
+ if(!POWER)return;
+ wake(); if(A.ctx&&A.ctx.state!=='running')A.ctx.resume();
+ if(JOINED&&(Date.now()-HIDDEN_AT>15000||USERS===0||!CONNECTED))rejoin('resume');
+};
+window.kcjBack=()=>{                                    // 안드로이드 뒤로가기: 열린 창 닫기 (없으면 앱은 바탕화면으로)
+ if($('#alarm').classList.contains('show'))return true;            // 긴급 경보는 '확인'으로만 끄기
+ const sh=document.querySelector('.sheet.show'); if(sh){sh.classList.remove('show');return true;}
+ return false;
+};
+window.kcjTick=()=>{                                    // APK 서비스가 20초마다 호출
+ if(!POWER||!net||!JOINED)return;
+ if(CONNECTED)LAST_CONN_OK=Date.now();
+ else if(Date.now()-LAST_CONN_OK>40000&&net.kick){net.kick();LAST_CONN_OK=Date.now();}
+ if(CONNECTED&&USERS===0)rejoin('tick');
+};
+document.addEventListener('visibilitychange',()=>{
+ if(document.visibilityState==='hidden'){HIDDEN_AT=Date.now();return;}
+ window.kcjResume();
+});
 
 /* ---------- 조작 ---------- */
 const ptt=$('#ptt');
