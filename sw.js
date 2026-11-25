@@ -1,5 +1,5 @@
 // KCJ RADIO 서비스워커 — 앱 화면만 저장(오프라인에서도 열림). 음성 통신은 저장하지 않음.
-const CACHE = 'kcj-radio-v5';
+const CACHE = 'kcj-radio-v7';
 const SHELL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener('activate', e => {
