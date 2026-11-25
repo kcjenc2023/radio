@@ -547,7 +547,7 @@ async function makeFirebase(cfg){
    D.runTransaction(D.ref(db,`stats/${d}`),cur=>{cur=cur||{};for(const k in add)cur[k]=Math.round(((cur[k]||0)+add[k])*10)/10;return cur;}).catch(()=>{});},
   watchUsage(cb){const st={online:{},stats:{}};
    const o1=D.onValue(D.ref(db,'online'),s=>{st.online=s.val()||{};cb(st);},()=>{});
-   const o2=D.onValue(D.query(D.ref(db,'stats'),D.orderByKey(),D.limitToLast(7)),s=>{st.stats=s.val()||{};cb(st);},()=>{});
+   const o2=D.onValue(D.query(D.ref(db,'stats'),D.orderByKey(),D.limitToLast(31)),s=>{st.stats=s.val()||{};cb(st);},()=>{});
    return ()=>{o1();o2();};},
   ack(ch,id){D.set(D.ref(db,`${gbase}/ch${ch}/acks/${id}/${ME.u}`),ME.n).catch(()=>{});},
   watchAcks(ch,id,cb){const p=`${gbase}/ch${ch}/acks/${id}`;const offv=D.onValue(D.ref(db,p),s=>cb(s.val()||{}));
@@ -785,20 +785,21 @@ $('#fGroup').addEventListener('input',()=>{const f=$('#fGroup'),v=f.value;
 $('#fGroupEye').onclick=()=>{const f=$('#fGroup');f.type=f.type==='password'?'text':'password';$('#fGroupEye').textContent=f.type==='password'?'보기':'숨김';};
 let ADM={pending:{},approved:{},allowed:{}},ADM_PN=-1;
 let USAGE={online:{},stats:{}},USAGE_OFF=null;
-const DAY_LIMIT_MB=360;   // Firebase 무료 요금제 하루 전송 한도(약 10GB/월)
+const MONTH_LIMIT_MB=10240;   // Firebase 무료(Spark) 요금제: 데이터 내려받기 월 10GB
 function renderUsage(){
  const el=$('#admUsage');if(!el)return;
  const on=Object.values(USAGE.online||{}),byG={};on.forEach(o=>{byG[o.g]=(byG[o.g]||0)+1;});
- const days=Object.keys(USAGE.stats||{}).sort().reverse();
- const kst=new Date(Date.now()+9*3600e3).toISOString().slice(0,10).replace(/-/g,'');
- const t=(USAGE.stats||{})[kst]||{};
- const mb=((t.dl||0)+(t.kb||0))/1024,pct=Math.min(100,mb/DAY_LIMIT_MB*100);
+ const all=Object.keys(USAGE.stats||{}).sort().reverse(),days=all.slice(0,7);
+ const kst=new Date(Date.now()+9*3600e3).toISOString().slice(0,10).replace(/-/g,''),mon=kst.slice(0,6);
+ const t=(USAGE.stats||{})[kst]||{},mbOf=x=>((x.dl||0)+(x.kb||0))/1024;
+ const mb=mbOf(t),mMb=all.filter(d=>d.startsWith(mon)).reduce((a,d)=>a+mbOf(USAGE.stats[d]),0),pct=Math.min(100,mMb/MONTH_LIMIT_MB*100);
  const fmtD=d=>d.slice(4,6)+'/'+d.slice(6,8);
  el.innerHTML=`지금 접속 <b>${on.length}명</b> <small>(무료 한도 동시 100명)</small><br>
   ${Object.keys(byG).map(g=>`· ${esc(gName(g)||maskCode(g))} ${byG[g]}명`).join('<br>')||'<small>접속자 없음</small>'}<br>
   오늘 송신 <b>${t.tx||0}회</b> · <b>${((t.sec||0)/60).toFixed(1)}분</b> · 긴급 ${t.alert||0}회<br>
-  오늘 데이터 약 <b>${mb.toFixed(1)}MB</b> / ${DAY_LIMIT_MB}MB
-  <div class="bar"><i class="${pct>70?'warn':''}" style="width:${pct.toFixed(1)}%"></i></div>
+  오늘 데이터 약 <b>${mb.toFixed(1)}MB</b><br>
+  이번 달 약 <b>${mMb>=1024?(mMb/1024).toFixed(2)+'GB':mMb.toFixed(1)+'MB'}</b> / 무료 10GB
+  <div class="bar"><i class="${pct>70?'warn':''}" style="width:${Math.max(pct,0.5).toFixed(1)}%"></i></div>
   <small>${pct.toFixed(1)}% 사용 · 정확한 값은 Firebase 콘솔 → Realtime Database → 사용량</small>
   ${days.length?`<table><tr><th>날짜</th><th>송신</th><th>분</th><th>MB</th></tr>${days.map(d=>{const x=USAGE.stats[d];return `<tr><td>${fmtD(d)}</td><td>${x.tx||0}</td><td>${((x.sec||0)/60).toFixed(1)}</td><td>${(((x.dl||0)+(x.kb||0))/1024).toFixed(1)}</td></tr>`;}).join('')}</table>`:''}`;
 }
