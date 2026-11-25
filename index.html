@@ -175,8 +175,8 @@ button,.btn,.keys,.alist label,#knob,.vol{-webkit-user-select:none!important;use
   <input id="fName" maxlength="12" placeholder="예: 조사1, 현장A">
   <div class="hint">처음 승인 요청할 때 쓰이는 이름입니다. 승인 후에는 관리자가 정한 이름으로 표시됩니다(사칭 방지).</div>
   <label>그룹코드 (팀 전용 암호)</label>
-  <div style="display:flex;gap:8px"><input id="fGroup" type="password" autocomplete="off" maxlength="24" placeholder="관리자에게 받은 그룹코드"><button type="button" class="mini" id="fGroupEye">보기</button></div>
-  <div class="hint">같은 그룹코드끼리만 들립니다. 영문·숫자로 정하고 외부에 알리지 마세요.</div>
+  <div style="display:flex;gap:8px"><input id="fGroup" type="password" autocomplete="off" maxlength="3000" placeholder="그룹코드 또는 초대 문구 붙여넣기"><button type="button" class="mini" id="fGroupEye">보기</button></div>
+  <div class="hint">카톡으로 받은 <b>초대 문구 전체를 길게 눌러 복사 → 여기에 붙여넣기</b> 하면 그룹코드가 자동으로 들어갑니다.</div>
   <label>채널</label>
   <select id="fCh"></select>
   <details id="cfgBox">
@@ -263,7 +263,7 @@ const EMBED_CFG = {
   appId: "1:39816778211:web:a0b4b716a5669a9f4990d6"
 };
 const CH_MAX = 16, TOT_SEC = 60, FB_VER = '10.12.2';
-const CH_NAMES = {1:'전체',9:'비상'};
+const CH_NAMES = {1:'그룹 전체'};   // CH1 = 같은 그룹의 모든 채널이 함께 듣는 방송 채널
 
 const $ = s => document.querySelector(s);
 const LS = {get(k,d){try{const v=localStorage.getItem('kcjr_'+k);return v===null?d:JSON.parse(v);}catch(e){return d;}},set(k,v){try{localStorage.setItem('kcjr_'+k,JSON.stringify(v));}catch(e){}}};
@@ -756,6 +756,11 @@ $('#fMyGroups').onchange=async()=>{
 /* ---------- 관리자 메뉴 / 내 기기 ID ---------- */
 function renderMyId(){if(net&&net.uid){$('#myIdBox').style.display='block';$('#myId').value=net.uid;}$('#admOpen').style.display=ROLE==='admin'?'block':'none';}
 $('#myIdCopy').onclick=async()=>{try{await navigator.clipboard.writeText($('#myId').value);toast('복사됨');}catch(e){$('#myId').select();}};
+function extractInvite(t){const g=t.match(/[?&]g=([A-Za-z0-9_\-가-힣]{6,24})/)||t.match(/그룹코드\s*[:：]\s*([A-Za-z0-9_\-가-힣]{6,24})/);const c=t.match(/[?&]ch=(\d{1,2})/);return g?{g:g[1],ch:c?Math.min(CH_MAX,Math.max(1,+c[1])):0}:null;}
+$('#fGroup').addEventListener('input',()=>{const f=$('#fGroup'),v=f.value;
+ if(v.length>24||/그룹코드|g=|KCJ RADIO/.test(v)){const r=extractInvite(v);
+  if(r){f.value=r.g;if(r.ch)$('#fCh').value=r.ch;toast('초대 문구에서 그룹코드를 찾았습니다');}
+  else{f.value='';toast('초대 문구에서 그룹코드를 찾지 못했습니다');}}});
 $('#fGroupEye').onclick=()=>{const f=$('#fGroup');f.type=f.type==='password'?'text':'password';$('#fGroupEye').textContent=f.type==='password'?'보기':'숨김';};
 let ADM={pending:{},approved:{},allowed:{}},ADM_PN=-1;
 function startAdmin(){
@@ -892,6 +897,7 @@ ${APK_URL}
 → 전원 버튼 → 설정
  · 호출명: 본인 이름
  · 그룹코드: ${g}
+   (그룹코드 칸에 이 메시지 전체를 붙여넣어도 자동 입력됨)
  · [저장하고 켜기]
 → '승인 대기' 뜨면 관리자에게 연락
 
